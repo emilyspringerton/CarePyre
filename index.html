@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CarePyre — From the Ashes of Crisis to Sovereign Infrastructure</title>
+<meta name="description" content="CarePyre is a community-owned trust building connectivity, digital identity, AI navigation, and financial protection for Pontiac, Michigan — so crisis becomes the fuel for a new, sovereign life instead of the end of one.">
+<style>
+  :root {
+    --white: #FFFFFF;
+    --pale-blue: #EAF6FB;
+    --sky: #3FA9DC;
+    --sky-dark: #1D7EA6;
+    --cyan: #22D3EE;
+    --orange: #FF8A3D;
+    --text: #1A2733;
+    --text-muted: #5B6B76;
+    --border: #D6E8F0;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--white);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+  a { color: var(--sky-dark); }
+
+  header {
+    max-width: 880px; margin: 0 auto; padding: 5rem 1.5rem 3rem;
+    text-align: center;
+  }
+  .wordmark {
+    font-size: 0.85rem; letter-spacing: 0.25em; text-transform: uppercase;
+    color: var(--sky); margin-bottom: 1.5rem; font-weight: 600;
+  }
+  h1 {
+    font-size: clamp(2.2rem, 5.5vw, 3.6rem);
+    margin: 0 0 1rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--sky-dark);
+  }
+  .tagline {
+    font-size: clamp(1.05rem, 2.3vw, 1.3rem);
+    color: var(--text-muted);
+    max-width: 620px; margin: 0 auto 2.5rem;
+    font-weight: 400;
+  }
+  .cta-row { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-block; padding: 0.85rem 1.8rem;
+    border-radius: 999px; text-decoration: none; font-weight: 600;
+    font-size: 0.95rem; transition: transform 0.15s ease, opacity 0.15s ease;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn-primary { background: var(--orange); color: var(--white); }
+  .btn-secondary { background: transparent; border: 2px solid var(--sky); color: var(--sky-dark); }
+
+  section { max-width: 880px; margin: 0 auto; padding: 3.5rem 1.5rem; }
+  section.tinted {
+    max-width: none; background: var(--pale-blue);
+  }
+  section.tinted > .inner { max-width: 880px; margin: 0 auto; }
+
+  .section-label {
+    font-size: 0.78rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--sky); margin-bottom: 0.6rem; font-weight: 700;
+  }
+  h2 {
+    font-size: clamp(1.5rem, 3.6vw, 2.1rem); margin: 0 0 0.6rem;
+    color: var(--sky-dark);
+  }
+  .rule { width: 48px; height: 3px; background: var(--cyan); border-radius: 2px; margin: 0.8rem 0 1.4rem; }
+  p.lead { font-size: 1.08rem; color: var(--text-muted); max-width: 680px; }
+
+  .stack {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.25rem; margin-top: 2rem;
+  }
+  .card {
+    background: var(--white); border: 1px solid var(--border);
+    border-radius: 16px; padding: 1.6rem;
+  }
+  .card .layer-num {
+    font-size: 0.75rem; color: var(--sky); font-weight: 700; letter-spacing: 0.1em;
+  }
+  .card h3 { margin: 0.4rem 0 0.6rem; font-size: 1.15rem; color: var(--text); }
+  .card p { margin: 0; color: var(--text-muted); font-size: 0.95rem; }
+
+  .structure {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-top: 2rem;
+  }
+  @media (max-width: 640px) { .structure { grid-template-columns: 1fr; } }
+  .org-card {
+    background: var(--white); border: 1px solid var(--border);
+    border-radius: 16px; padding: 1.75rem;
+  }
+  .org-card .kicker { font-size: 0.78rem; color: var(--orange); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+  .org-card h3 { margin: 0.5rem 0 0.75rem; color: var(--text); }
+  .org-card ul { margin: 0; padding-left: 1.1rem; color: var(--text-muted); font-size: 0.95rem; }
+  .org-card li { margin-bottom: 0.35rem; }
+
+  .quote-block {
+    border-left: 4px solid var(--cyan); padding: 0.5rem 0 0.5rem 1.5rem;
+    margin: 2.5rem 0; font-size: 1.15rem; color: var(--sky-dark); font-style: italic;
+  }
+
+  footer {
+    max-width: 880px; margin: 0 auto; padding: 3rem 1.5rem 4rem;
+    border-top: 1px solid var(--border); text-align: center;
+    color: var(--text-muted); font-size: 0.9rem;
+  }
+  footer a { color: var(--sky-dark); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wordmark">CarePyre</div>
+  <h1>From the Ashes of Crisis<br>to Sovereign Infrastructure</h1>
+  <p class="tagline">
+    A community-owned trust in Pontiac, Michigan, building the connectivity, identity,
+    guidance, and financial protection that crisis takes away first — so it becomes the
+    fuel for a new life, not the end of one.
+  </p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="#get-involved">Get Involved</a>
+    <a class="btn btn-secondary" href="#mission">Learn the Mission</a>
+  </div>
+</header>
+
+<section id="mission">
+  <div class="section-label">The Mission</div>
+  <h2>Care is the mission. Pyre is how something new gets built from what crisis burns down.</h2>
+  <div class="rule"></div>
+  <p class="lead">
+    Legacy systems manage the symptoms of poverty and crisis while extracting whatever
+    resources are left in the process. CarePyre exists to do the opposite: build real,
+    owned infrastructure — connectivity, identity, guidance, and protection — directly
+    with the people who need it, so that a crisis becomes the ignition point for a
+    sovereign, self-determined life instead of a debt someone else profits from.
+  </p>
+  <div class="quote-block">
+    "The Pyre is the holy fire from which something is reborn out of its own ashes —
+    not destroyed by the crisis, built by it."
+  </div>
+</section>
+
+<section class="tinted">
+<div class="inner">
+  <div class="section-label">The C.H.A.N.G.E. Stack</div>
+  <h2>Four layers, built to stay with you when everything else gets cut off.</h2>
+  <div class="rule"></div>
+  <p class="lead">
+    Most support systems fail at the exact moment someone needs them most — a phone gets
+    shut off, an email account gets abandoned, a form goes unanswered. CarePyre's stack is
+    designed around that specific failure point.
+  </p>
+  <div class="stack">
+    <div class="card">
+      <div class="layer-num">LAYER 1</div>
+      <h3>Community Telecom Mesh</h3>
+      <p>Local, un-cancellable wireless connectivity — so losing a phone bill never means losing contact with the world.</p>
+    </div>
+    <div class="card">
+      <div class="layer-num">LAYER 2</div>
+      <h3>Autonomous Identity</h3>
+      <p>A permanent digital identity and inbox that stays yours — not tied to a job, a carrier, or a bank account that can disappear.</p>
+    </div>
+    <div class="card">
+      <div class="layer-num">LAYER 3</div>
+      <h3>Human-Centered AI Navigation</h3>
+      <p>Local AI tools that help people understand leases, benefits, and paperwork in plain language — real navigation, not a hotline.</p>
+    </div>
+    <div class="card">
+      <div class="layer-num">LAYER 4</div>
+      <h3>Sovereign Finance &amp; Life Protection</h3>
+      <p>Real financial protection and estate planning tools — so the gains one generation builds actually reach the next one.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<section id="structure">
+  <div class="section-label">How It's Built</div>
+  <h2>Owned by the people it serves, not extracted from them.</h2>
+  <div class="rule"></div>
+  <p class="lead">
+    CarePyre is organized as a holding trust with two arms — a nonprofit foundation and a
+    worker-owned cooperative — so that value created locally stays local.
+  </p>
+  <div class="structure">
+    <div class="org-card">
+      <div class="kicker">501(c)(3) Non-Profit</div>
+      <h3>CarePyre Foundation</h3>
+      <ul>
+        <li>Grants and philanthropic funding</li>
+        <li>Direct human services and shelter support</li>
+        <li>Community education cohorts</li>
+        <li>Community board oversight</li>
+      </ul>
+    </div>
+    <div class="org-card">
+      <div class="kicker">Worker-Owned Cooperative</div>
+      <h3>CarePyre Networks</h3>
+      <ul>
+        <li>Builds and maintains the local mesh network</li>
+        <li>Runs the identity and email infrastructure</li>
+        <li>Local tech jobs at real, living wages</li>
+        <li>Reinvests surplus into the community, not shareholders</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="tinted" id="get-involved">
+<div class="inner">
+  <div class="section-label">Get Involved</div>
+  <h2>We're building the founding board.</h2>
+  <div class="rule"></div>
+  <p class="lead">
+    CarePyre is recruiting founding board members across faith, workforce, technology,
+    law, and lived community experience — people who want governance, not just a donation
+    request, to be the way this gets built right.
+  </p>
+  <div class="cta-row" style="justify-content:flex-start; margin-top: 1.5rem;">
+    <a class="btn btn-primary" href="mailto:hello@carepyre.org">Contact Us</a>
+  </div>
+</div>
+</section>
+
+<footer>
+  <p>CarePyre Trust · Pontiac, Oakland County, Michigan</p>
+  <p><a href="mailto:hello@carepyre.org">hello@carepyre.org</a></p>
+</footer>
+
+</body>
+</html>
