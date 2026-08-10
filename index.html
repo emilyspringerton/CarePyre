@@ -114,6 +114,26 @@
     color: var(--text-muted); font-size: 0.9rem;
   }
   footer a { color: var(--sky-dark); }
+
+  .contact-form {
+    max-width: 480px; margin-top: 2rem;
+  }
+  .form-row { margin-bottom: 1.1rem; display: flex; flex-direction: column; }
+  .form-row label {
+    font-size: 0.85rem; font-weight: 600; color: var(--text);
+    margin-bottom: 0.35rem;
+  }
+  .form-row input, .form-row textarea {
+    font: inherit; font-size: 0.98rem; color: var(--text);
+    background: var(--white); border: 1px solid var(--border);
+    border-radius: 10px; padding: 0.7rem 0.85rem; resize: vertical;
+  }
+  .form-row input:focus, .form-row textarea:focus {
+    outline: none; border-color: var(--sky);
+  }
+  .cf-status { min-height: 1.2em; margin-top: 0.75rem; font-size: 0.92rem; }
+  .cf-status-ok { color: var(--sky-dark); }
+  .cf-status-err { color: #C0392B; }
 </style>
 </head>
 <body>
@@ -226,16 +246,69 @@
     law, and lived community experience — people who want governance, not just a donation
     request, to be the way this gets built right.
   </p>
-  <div class="cta-row" style="justify-content:flex-start; margin-top: 1.5rem;">
-    <a class="btn btn-primary" href="mailto:hello@carepyre.org">Contact Us</a>
-  </div>
+
+  <form id="contact-form" class="contact-form" novalidate>
+    <div class="form-row">
+      <label for="cf-name">Name</label>
+      <input type="text" id="cf-name" name="name" required maxlength="120" autocomplete="name">
+    </div>
+    <div class="form-row">
+      <label for="cf-email">Email</label>
+      <input type="email" id="cf-email" name="email" required maxlength="254" autocomplete="email">
+    </div>
+    <div class="form-row">
+      <label for="cf-message">Message</label>
+      <textarea id="cf-message" name="message" required maxlength="4000" rows="5"></textarea>
+    </div>
+    <div class="cta-row" style="justify-content:flex-start; margin-top: 0.5rem;">
+      <button type="submit" class="btn btn-primary">Send</button>
+    </div>
+    <p id="cf-status" class="cf-status" role="status"></p>
+  </form>
 </div>
 </section>
 
 <footer>
   <p>CarePyre Trust · Pontiac, Oakland County, Michigan</p>
-  <p><a href="mailto:hello@carepyre.org">hello@carepyre.org</a></p>
 </footer>
+
+<script>
+(function () {
+  var form = document.getElementById('contact-form');
+  var status = document.getElementById('cf-status');
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = document.getElementById('cf-name').value.trim();
+    var email = document.getElementById('cf-email').value.trim();
+    var message = document.getElementById('cf-message').value.trim();
+    var submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    status.textContent = 'Sending…';
+    status.className = 'cf-status';
+    fetch('/api/v1/carepyre/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name, email: email, message: message })
+    })
+      .then(function (res) {
+        if (!res.ok) { throw new Error('request failed'); }
+        return res.json();
+      })
+      .then(function () {
+        status.textContent = "Thanks — we'll be in touch.";
+        status.className = 'cf-status cf-status-ok';
+        form.reset();
+      })
+      .catch(function () {
+        status.textContent = 'Something went wrong — please try again in a moment.';
+        status.className = 'cf-status cf-status-err';
+      })
+      .finally(function () {
+        submitBtn.disabled = false;
+      });
+  });
+})();
+</script>
 
 </body>
 </html>
