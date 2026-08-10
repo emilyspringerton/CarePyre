@@ -45,6 +45,16 @@ given screen are orange, that's too many.
 - First person plural ("we," "our") when describing CarePyre's own actions; second person
   ("you," "your") when describing what a visitor/participant gets.
 - Confident but not salesy — this is a real nonprofit/community trust, not a startup pitch deck.
+- **Traditional charities and nonprofits are partners, not a foil.** Founder, 2026-08-10, after
+  reviewing a draft that read as dismissive of donation-based/legacy charity models: "traditional
+  charity are our partners and it kind of shits on them" → "we are going to bring them forward
+  into the future" → "pls ensure our partnerships are good." Never frame CarePyre's
+  infrastructure-first approach as superior to or in opposition to existing charitable work
+  (avoid language like "legacy systems extract," "not just a donation," "not extracted from
+  them" — all real phrasing caught and removed from the first landing-page draft). The correct
+  frame: CarePyre builds infrastructure *underneath and alongside* the nonprofits, congregations,
+  and community organizations already doing this work — modernizing and supporting that work,
+  not replacing or shaming it.
 
 ## Components
 
