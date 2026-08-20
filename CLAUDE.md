@@ -2,15 +2,22 @@
 
 ## What This Is
 
-New repo (2026-08-10), stub only — no scope, stack, or direction decided yet. Founder: "more
-direction will follow." Do not guess at purpose or start building anything until a real spec
-exists — see root `CLAUDE.md`'s "Spec Before Implementation" principle (`EMILY/docs/
-THE_EMILY_WAY.md` Principle 2).
+CarePyre — "From the Ashes of Crisis to Sovereign Infrastructure." A community-owned trust for
+Pontiac, Michigan, building a 4-layer stack (Community Telecom Mesh, Autonomous Identity,
+Human-Centered AI Navigation, Sovereign Finance & Life Protection) so a crisis becomes ignition
+for a new self-determined life rather than the end of one. See `index.html` for the real,
+shipped landing page and `docs/MESH_NETWORK_RESEARCH.md` for the current technical research on
+Layer 1.
 
 ## Status
 
-Just cloned. Nothing built. Next real step is whatever direction the founder gives next —
-likely a NORTHSTAR.md once scope is clear, per house convention.
+Real, shipped: static landing page (`index.html`, `STYLE_GUIDE.md`-governed), a working Contact
+form posting to IDUNA's `/api/v1/carepyre/contact`, nginx config prepped for `carepyre.org`
+(domain/cert setup itself queued in `sudo-queue/`, not yet run). `source/gemini-transcript-
+2026-08-09.md` is the repo's real "skunkworks origin" artifact — an ingested Gemini conversation
+about ReLU activation function variants, unrelated to the mission but the literal first thing
+committed here. Not yet built: any of the 4 layers' actual technology — this is currently a
+mission pitch + contact intake, not working infrastructure.
 
 ## Founder Real-Time Direction
 
