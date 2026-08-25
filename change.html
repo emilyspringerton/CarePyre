@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The C.H.A.N.G.E. Initiative — CarePyre</title>
+<meta name="description" content="The C.H.A.N.G.E. Initiative: Community Connectivity, Human-Centered AI, Autonomous Identity, Network Sovereignty, Grassroots Financial Growth, and Economic Independence — CarePyre's six-pillar path from crisis to permanent economic sovereignty.">
+<style>
+  :root {
+    --white: #FFFFFF;
+    --pale-blue: #EAF6FB;
+    --sky: #3FA9DC;
+    --sky-dark: #1D7EA6;
+    --cyan: #22D3EE;
+    --orange: #FF8A3D;
+    --text: #1A2733;
+    --text-muted: #5B6B76;
+    --border: #D6E8F0;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--white);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+  a { color: var(--sky-dark); }
+
+  header {
+    max-width: 880px; margin: 0 auto; padding: 5rem 1.5rem 3rem;
+    text-align: center;
+  }
+  .wordmark {
+    font-size: 0.85rem; letter-spacing: 0.25em; text-transform: uppercase;
+    color: var(--sky); margin-bottom: 1.5rem; font-weight: 600;
+  }
+  .wordmark a { color: inherit; text-decoration: none; }
+  h1 {
+    font-size: clamp(2.2rem, 5.5vw, 3.6rem);
+    margin: 0 0 1rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--sky-dark);
+  }
+  .tagline {
+    font-size: clamp(1.05rem, 2.3vw, 1.3rem);
+    color: var(--text-muted);
+    max-width: 620px; margin: 0 auto 2.5rem;
+    font-weight: 400;
+  }
+  .cta-row { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-block; padding: 0.85rem 1.8rem;
+    border-radius: 999px; text-decoration: none; font-weight: 600;
+    font-size: 0.95rem; transition: transform 0.15s ease, opacity 0.15s ease;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn-primary { background: var(--orange); color: var(--white); }
+  .btn-secondary { background: transparent; border: 2px solid var(--sky); color: var(--sky-dark); }
+
+  section { max-width: 880px; margin: 0 auto; padding: 3.5rem 1.5rem; }
+  section.tinted {
+    max-width: none; background: var(--pale-blue);
+  }
+  section.tinted > .inner { max-width: 880px; margin: 0 auto; }
+
+  .section-label {
+    font-size: 0.78rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--sky); margin-bottom: 0.6rem; font-weight: 700;
+  }
+  h2 {
+    font-size: clamp(1.5rem, 3.6vw, 2.1rem); margin: 0 0 0.6rem;
+    color: var(--sky-dark);
+  }
+  .rule { width: 48px; height: 3px; background: var(--cyan); border-radius: 2px; margin: 0.8rem 0 1.4rem; }
+  p.lead { font-size: 1.08rem; color: var(--text-muted); max-width: 680px; }
+
+  .pillars { margin-top: 2.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
+  .pillar {
+    background: var(--white); border: 1px solid var(--border);
+    border-radius: 16px; padding: 1.75rem 1.9rem;
+    display: grid; grid-template-columns: 64px 1fr; gap: 1.4rem; align-items: start;
+  }
+  .pillar .letter {
+    font-size: 2.2rem; font-weight: 800; color: var(--sky);
+    line-height: 1; text-align: center;
+    background: var(--pale-blue); border-radius: 12px;
+    width: 64px; height: 64px; display: flex; align-items: center; justify-content: center;
+  }
+  .pillar h3 { margin: 0 0 0.35rem; font-size: 1.2rem; color: var(--text); }
+  .pillar .layer-tag {
+    font-size: 0.72rem; color: var(--orange); font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 0.5rem;
+  }
+  .pillar p { margin: 0; color: var(--text-muted); font-size: 0.97rem; }
+
+  .quote-block {
+    border-left: 4px solid var(--cyan); padding: 0.5rem 0 0.5rem 1.5rem;
+    margin: 2.5rem 0; font-size: 1.15rem; color: var(--sky-dark); font-style: italic;
+  }
+
+  footer {
+    max-width: 880px; margin: 0 auto; padding: 3rem 1.5rem 4rem;
+    border-top: 1px solid var(--border); text-align: center;
+    color: var(--text-muted); font-size: 0.9rem;
+  }
+  footer a { color: var(--sky-dark); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wordmark"><a href="/">CarePyre</a></div>
+  <h1>The C.H.A.N.G.E. Initiative</h1>
+  <p class="tagline">
+    Six pillars, one path — from crisis response to permanent economic sovereignty.
+    This is the full framework behind CarePyre's four-layer stack, and the plain-language
+    version of what we bring to funders, partners, and the community itself.
+  </p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="/#get-involved">Get Involved</a>
+    <a class="btn btn-secondary" href="/">Back to CarePyre</a>
+  </div>
+</header>
+
+<section>
+  <div class="section-label">The Framework</div>
+  <h2>Community Connectivity, Human-Centered AI, Autonomous Identity, Network Sovereignty, Grassroots Financial Growth, and Economic Independence.</h2>
+  <div class="rule"></div>
+  <p class="lead">
+    C.H.A.N.G.E. is a six-pillar technology and workforce framework designed to move social
+    service delivery from managing poverty to building permanent economic sovereignty —
+    built with the people it serves, and alongside the community organizations, congregations,
+    and nonprofits already doing this work every day.
+  </p>
+  <div class="quote-block">
+    "A crisis can take everything at once — a phone, a stable address, a support network —
+    faster than any single organization can replace it alone. C.H.A.N.G.E. is the
+    infrastructure underneath the response."
+  </div>
+</section>
+
+<section class="tinted">
+<div class="inner">
+  <div class="section-label">The Six Pillars</div>
+  <h2>What each letter actually means.</h2>
+  <div class="rule"></div>
+  <div class="pillars">
+    <div class="pillar">
+      <div class="letter">C</div>
+      <div>
+        <div class="layer-tag">Physical Layer</div>
+        <h3>Community Connectivity</h3>
+        <p>Local, community-owned wireless infrastructure on the roofs of shelters and partner
+        sites — so losing a phone bill never means losing contact with the world. Zero-cost,
+        un-cancellable connectivity for the people who need it most, built alongside the
+        organizations already serving them.</p>
+      </div>
+    </div>
+    <div class="pillar">
+      <div class="letter">H</div>
+      <div>
+        <div class="layer-tag">Cognitive Layer</div>
+        <h3>Human-Centered AI</h3>
+        <p>Real tools, not a hotline: local AI that helps people read a dense lease, understand
+        a housing voucher, or push back on a predatory fee in plain language — a cognitive
+        exoskeleton for navigating systems that were never built to be navigated alone.</p>
+      </div>
+    </div>
+    <div class="pillar">
+      <div class="letter">A</div>
+      <div>
+        <div class="layer-tag">Passport Layer</div>
+        <h3>Autonomous Identity</h3>
+        <p>A permanent phone number and digital identity that stays yours — not tied to a job,
+        a carrier, or a bank account that can vanish overnight. Real, durable access to 2FA,
+        email, housing portals, and employment systems, no matter what else changes.</p>
+      </div>
+    </div>
+    <div class="pillar">
+      <div class="letter">N</div>
+      <div>
+        <div class="layer-tag">Infrastructure Layer</div>
+        <h3>Network Sovereignty</h3>
+        <p>The network the community builds is owned by the community — not rented from a
+        carrier, not an ongoing expense. Over time, it becomes a self-funding asset instead of
+        a recurring bill.</p>
+      </div>
+    </div>
+    <div class="pillar">
+      <div class="letter">G</div>
+      <div>
+        <div class="layer-tag">Monetary Layer</div>
+        <h3>Grassroots Financial Growth</h3>
+        <p>Real financial education and tools that let income earned through new skills and
+        AI-augmented work actually stay with the person who earned it — protected from
+        predatory fees and the instability of being unbanked.</p>
+      </div>
+    </div>
+    <div class="pillar">
+      <div class="letter">E</div>
+      <div>
+        <div class="layer-tag">The Outcome</div>
+        <h3>Economic Independence</h3>
+        <p>A real, non-exploitative career pipeline — from a supported classroom stipend, to a
+        paid apprenticeship, to becoming a worker-owner earning a real living wage. The point of
+        every other pillar: a permanent exit from crisis, not a longer stay inside it.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section>
+  <div class="section-label">How This Connects</div>
+  <h2>The same four layers, told from a different angle.</h2>
+  <div class="rule"></div>
+  <p class="lead">
+    C.H.A.N.G.E. is the mission framing; CarePyre's four-layer stack (Community Telecom Mesh,
+    Autonomous Identity, Human-Centered AI Navigation, and Sovereign Finance &amp; Life
+    Protection) is the technical shape it takes. Same work, same partners, same commitment —
+    just the version built for grant committees, boards, and anyone who wants the plain-language
+    walkthrough of why each piece matters.
+  </p>
+  <p class="lead" style="margin-top: 1.2rem;">
+    <a href="/">← See the full CarePyre mission and stack</a>
+  </p>
+</section>
+
+<footer>
+  <p>CarePyre Trust · Pontiac, Oakland County, Michigan</p>
+</footer>
+
+</body>
+</html>
