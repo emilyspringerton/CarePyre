@@ -1,3 +1,7 @@
+## 2026-08-25
+
+- deployed change.html + current index.html to carepyre.org -- was committed but never landed live (sess-20260825-1938-f6bd411e)
+
 ## 2026-08-20
 - docs: added docs/MESH_NETWORK_RESEARCH.md. Founder: "we need to validate the carepyre mesh
   network research... especially how do participants interact with traditional SMS and voice
