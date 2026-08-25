@@ -1,6 +1,17 @@
 ## 2026-08-25
 
 - deployed change.html + current index.html to carepyre.org -- was committed but never landed live (sess-20260825-1938-f6bd411e)
+- design: applied Prompt-o-verse-derived art direction to index.html + change.html headers.
+  Founder: "update the site with promptoverse art tasteful". The Prompt-o-verse gallery
+  (/var/www/okemily/prompt-o-verse/) is entirely franchise-character mashup art with no true
+  negative space -- a genuine mismatch for CarePyre's deliberately non-EINHORN, calm healthcare
+  brand. Per the founder's own choice when asked, used it abstractly rather than literally:
+  derived a soft blue glow texture from 15-underwater.png (heavy Gaussian blur + color-modulate
+  toward the site's own sky-blue palette), applied as a uniform 90%-white-washed header
+  background rather than a literal hero photo. Verified against WCAG AA computationally (not
+  eyeballed) using the darkest sampled region of the source image: h1 4.3:1 (>=3:1 required for
+  large text), tagline 5.17:1 (>=4.5:1 required for body text). Deployed to
+  /var/www/carepyre/images/dawn-glow.jpg. (sess-20260825-1938-f6bd411e)
 
 ## 2026-08-20
 - docs: added docs/MESH_NETWORK_RESEARCH.md. Founder: "we need to validate the carepyre mesh
