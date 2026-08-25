@@ -29,9 +29,24 @@
   a { color: var(--sky-dark); }
 
   header {
-    max-width: 880px; margin: 0 auto; padding: 5rem 1.5rem 3rem;
+    max-width: none; padding: 5rem 1.5rem 3rem;
     text-align: center;
+    /* Soft dawn-glow wash (2026-08-25, founder: "update the site with promptoverse art
+       tasteful"): a Prompt-o-verse-derived texture, abstracted past recognizability (heavily
+       blurred, re-toned into the site's own palette) rather than used as a literal photo/
+       character -- the gallery itself is all franchise-character art, nothing close to this
+       site's calm, human tone, so the honest fit is texture, not a hero image. Reads as dawn/
+       ignition light, which happens to match this page's own "reborn from its own ashes"
+       language rather than being an arbitrary color field. */
+    /* Uniform white wash (not a top-to-bottom fade) -- measured against the actual
+       image: a fade left the top band (where the wordmark/h1 sit) too exposed, dropping
+       tagline contrast below WCAG AA's 4.5:1 for body text. A flat 90% white overlay keeps
+       every text color already in this page's palette compliant while the glow still reads
+       at the header's edges. */
+    background: linear-gradient(rgba(255,255,255,0.9), rgba(255,255,255,0.9)),
+                url("images/dawn-glow.jpg") center top / cover no-repeat;
   }
+  header .inner { max-width: 880px; margin: 0 auto; }
   .wordmark {
     font-size: 0.85rem; letter-spacing: 0.25em; text-transform: uppercase;
     color: var(--sky); margin-bottom: 1.5rem; font-weight: 600;
@@ -139,16 +154,18 @@
 <body>
 
 <header>
-  <div class="wordmark">CarePyre</div>
-  <h1>From the Ashes of Crisis<br>to Sovereign Infrastructure</h1>
-  <p class="tagline">
-    A community-owned trust in Pontiac, Michigan, building the connectivity, identity,
-    guidance, and financial protection that crisis takes away first — so it becomes the
-    fuel for a new life, not the end of one.
-  </p>
-  <div class="cta-row">
-    <a class="btn btn-primary" href="#get-involved">Get Involved</a>
-    <a class="btn btn-secondary" href="#mission">Learn the Mission</a>
+  <div class="inner">
+    <div class="wordmark">CarePyre</div>
+    <h1>From the Ashes of Crisis<br>to Sovereign Infrastructure</h1>
+    <p class="tagline">
+      A community-owned trust in Pontiac, Michigan, building the connectivity, identity,
+      guidance, and financial protection that crisis takes away first — so it becomes the
+      fuel for a new life, not the end of one.
+    </p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="#get-involved">Get Involved</a>
+      <a class="btn btn-secondary" href="#mission">Learn the Mission</a>
+    </div>
   </div>
 </header>
 

@@ -29,9 +29,13 @@
   a { color: var(--sky-dark); }
 
   header {
-    max-width: 880px; margin: 0 auto; padding: 5rem 1.5rem 3rem;
+    max-width: none; padding: 5rem 1.5rem 3rem;
     text-align: center;
+    /* Same dawn-glow treatment as index.html's header -- see that file for the full note. */
+    background: linear-gradient(rgba(255,255,255,0.9), rgba(255,255,255,0.9)),
+                url("images/dawn-glow.jpg") center top / cover no-repeat;
   }
+  header .inner { max-width: 880px; margin: 0 auto; }
   .wordmark {
     font-size: 0.85rem; letter-spacing: 0.25em; text-transform: uppercase;
     color: var(--sky); margin-bottom: 1.5rem; font-weight: 600;
@@ -112,16 +116,18 @@
 <body>
 
 <header>
-  <div class="wordmark"><a href="/">CarePyre</a></div>
-  <h1>The C.H.A.N.G.E. Initiative</h1>
-  <p class="tagline">
-    Six pillars, one path — from crisis response to permanent economic sovereignty.
-    This is the full framework behind CarePyre's four-layer stack, and the plain-language
-    version of what we bring to funders, partners, and the community itself.
-  </p>
-  <div class="cta-row">
-    <a class="btn btn-primary" href="/#get-involved">Get Involved</a>
-    <a class="btn btn-secondary" href="/">Back to CarePyre</a>
+  <div class="inner">
+    <div class="wordmark"><a href="/">CarePyre</a></div>
+    <h1>The C.H.A.N.G.E. Initiative</h1>
+    <p class="tagline">
+      Six pillars, one path — from crisis response to permanent economic sovereignty.
+      This is the full framework behind CarePyre's four-layer stack, and the plain-language
+      version of what we bring to funders, partners, and the community itself.
+    </p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="/#get-involved">Get Involved</a>
+      <a class="btn btn-secondary" href="/">Back to CarePyre</a>
+    </div>
   </div>
 </header>
 
