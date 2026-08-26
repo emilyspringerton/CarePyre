@@ -12,12 +12,15 @@ Layer 1.
 ## Status
 
 Real, shipped: static landing page (`index.html`, `STYLE_GUIDE.md`-governed), a working Contact
-form posting to IDUNA's `/api/v1/carepyre/contact`, nginx config prepped for `carepyre.org`
-(domain/cert setup itself queued in `sudo-queue/`, not yet run). `source/gemini-transcript-
-2026-08-09.md` is the repo's real "skunkworks origin" artifact — an ingested Gemini conversation
-about ReLU activation function variants, unrelated to the mission but the literal first thing
-committed here. Not yet built: any of the 4 layers' actual technology — this is currently a
-mission pitch + contact intake, not working infrastructure.
+form posting to IDUNA's `/api/v1/carepyre/contact`, a second page (`change.html`) for the
+C.H.A.N.G.E. Initiative's six-pillar framework, a "dawn-glow" header art direction (tasteful,
+abstracted Prompt-o-verse art — deliberately not the gallery's usual franchise-mashup style),
+and nginx config prepped for `carepyre.org` (domain/cert setup itself queued in `sudo-queue/`,
+not yet run). `source/gemini-transcript-2026-08-09.md` is the repo's real "skunkworks origin"
+artifact — an ingested Gemini conversation about ReLU activation function variants, unrelated to
+the mission but the literal first thing committed here. Not yet built: any of the 4 layers'
+actual technology — this is currently a mission pitch + contact intake, not working
+infrastructure.
 
 ## Founder Real-Time Direction
 
