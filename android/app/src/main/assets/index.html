@@ -1,0 +1,219 @@
+<!doctype html>
+<!--
+  CarePyre SIP Phone -- real WebView UI shell (kanban CP-SIP-CONTINUE-123/CP-SIP-CONTINUE/
+  CP-SIP-124455/CP-SIP-24332). See docs/SIP_PHONE_ANDROID_NORTHSTAR.md's own "Phase 6" section
+  for the real architecture decision this implements: a local, bundled HTML/CSS/JS UI rendered
+  in a plain Android WebView (file:///android_asset/index.html), NOT PARENA's own UI surface --
+  PARENA has no proven Android UI target today (gap #2, the SDL2/NDK cross-compile blocker), and
+  the founder's own card text named the same real tradeoff directly ("WE MAY NEED TO USE WEB
+  TECHNOLOGIES FOR THE INTERFACE IF WE WANT TO GET IT UP AND RUNNING SUPER FAST TO ITERATE").
+  MJOLNIR already establishes WebView-in-a-native-Activity as a real, proven pattern in this
+  monorepo (Accompanist WebView for remote product panels) -- this is the same real Android
+  WebView component, just pointed at a local bundled page instead of a remote URL.
+
+  Real, honest scope: three real, working screens (Dial / Incoming Call / Config), all client-
+  side state -- NO real SIP signaling wired in yet (native/sip-jni-proof/'s own JNI bridge is
+  proven on desktop but not yet embedded in this app, see the northstar doc's gap #2). The
+  "Simulate incoming call" control on the dial screen exists ONLY so the incoming-call screen is
+  actually reachable and reviewable before real signaling exists -- clearly labeled as such, not
+  hidden as if it were real.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>CarePyre SIP Phone</title>
+<style>
+  @font-face {
+    font-family: "JetBrains Mono";
+    src: url("fonts/JetBrainsMono-Regular.woff2") format("woff2");
+    font-weight: 400; font-style: normal; font-display: swap;
+  }
+  @font-face {
+    font-family: "JetBrains Mono";
+    src: url("fonts/JetBrainsMono-Medium.woff2") format("woff2");
+    font-weight: 500; font-style: normal; font-display: swap;
+  }
+  @font-face {
+    font-family: "JetBrains Mono";
+    src: url("fonts/JetBrainsMono-Bold.woff2") format("woff2");
+    font-weight: 700; font-style: normal; font-display: swap;
+  }
+
+  /* CarePyre STYLE_GUIDE.md palette (sky blue / white / orange) -- the marketing site's own
+     "no external font loading" rule is about avoiding network requests on a public web page;
+     this is a bundled, offline app asset, so JetBrains Mono (CP-SIP-CONTINUE-123's own ask,
+     bundled locally, same offline-first spirit) is a deliberate, considered exception, not a
+     violation of it. */
+  :root {
+    --bg: #FFFFFF; --bg-soft: #EAF6FB;
+    --blue: #3FA9DC; --blue-dark: #1D7EA6;
+    --cyan: #22D3EE; --orange: #FF8A3D;
+    --text: #1A2733; --text-muted: #5B6B76; --border: #D6E8F0;
+    --accept: #2FAE6B; --decline: #E5484D;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: "JetBrains Mono", ui-monospace, Consolas, monospace;
+    overflow: hidden; user-select: none;
+  }
+  .screen {
+    display: none; flex-direction: column; height: 100%; padding: 1.1rem 1.3rem 1.6rem;
+  }
+  .screen.active { display: flex; }
+
+  /* ---------- Dial screen ---------- */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem;
+  }
+  .topbar .brand { color: var(--blue-dark); font-weight: 700; font-size: 1.05rem; letter-spacing: 0.02em; }
+  .icon-btn {
+    background: var(--bg-soft); border: 1px solid var(--border); color: var(--blue-dark);
+    border-radius: 10px; width: 2.4rem; height: 2.4rem; font-size: 1.05rem; cursor: pointer;
+  }
+  .number-display {
+    flex: none; text-align: center; font-size: 2rem; font-weight: 500; color: var(--text);
+    min-height: 2.6rem; letter-spacing: 0.03em; word-break: break-all; padding: 0.6rem 0;
+    border-bottom: 1px solid var(--border); margin-bottom: 0.8rem;
+  }
+  .number-display:empty::before { content: "Enter a SIP number"; color: var(--text-muted); font-size: 1.1rem; }
+  .keypad {
+    flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.7rem; align-content: center;
+  }
+  .key {
+    background: var(--bg-soft); border: 1px solid var(--border); border-radius: 16px;
+    font-family: inherit; font-size: 1.35rem; font-weight: 500; color: var(--text);
+    padding: 0.9rem 0; cursor: pointer;
+  }
+  .key:active { background: var(--border); }
+  .key .sub { display: block; font-size: 0.55rem; letter-spacing: 0.12em; color: var(--text-muted); margin-top: 0.15rem; }
+  .dial-actions { display: flex; align-items: center; justify-content: center; gap: 1.2rem; margin-top: 1rem; }
+  .call-btn, .del-btn {
+    border: none; border-radius: 999px; width: 4rem; height: 4rem; font-size: 1.4rem; cursor: pointer;
+  }
+  .call-btn { background: var(--orange); color: #fff; }
+  .del-btn { background: var(--bg-soft); color: var(--text-muted); border: 1px solid var(--border); font-size: 1.1rem; }
+  .demo-row { text-align: center; margin-top: 0.8rem; }
+  .demo-link {
+    background: none; border: none; color: var(--text-muted); font-family: inherit;
+    font-size: 0.72rem; text-decoration: underline; cursor: pointer; padding: 0.4rem;
+  }
+
+  /* ---------- Incoming call screen ---------- */
+  .call-screen { align-items: center; justify-content: space-between; text-align: center; background: var(--bg-soft); }
+  .call-status { color: var(--blue-dark); font-size: 0.85rem; letter-spacing: 0.1em; margin-top: 2.2rem; text-transform: uppercase; }
+  .caller-avatar {
+    width: 6.5rem; height: 6.5rem; border-radius: 999px; background: var(--blue);
+    color: #fff; font-size: 2.2rem; display: flex; align-items: center; justify-content: center;
+    margin: 1.2rem 0 0.9rem; font-weight: 700;
+  }
+  .caller-name { font-size: 1.3rem; font-weight: 700; color: var(--text); }
+  .caller-number { color: var(--text-muted); font-size: 0.9rem; margin-top: 0.2rem; }
+  .call-actions { display: flex; gap: 2.6rem; margin-bottom: 1.6rem; }
+  .round-btn {
+    width: 4.2rem; height: 4.2rem; border-radius: 999px; border: none; color: #fff;
+    font-size: 1.5rem; cursor: pointer;
+  }
+  .round-btn.accept { background: var(--accept); }
+  .round-btn.decline { background: var(--decline); }
+  .round-btn-label { display: block; font-size: 0.65rem; color: var(--text-muted); margin-top: 0.4rem; text-transform: uppercase; letter-spacing: 0.08em; }
+
+  /* ---------- Config screen ---------- */
+  .config-screen { overflow-y: auto; }
+  .field { margin-bottom: 0.9rem; }
+  .field label { display: block; font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.3rem; }
+  .field input, .field select {
+    width: 100%; font-family: inherit; font-size: 0.95rem; padding: 0.6rem 0.7rem;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--bg-soft); color: var(--text);
+  }
+  .save-btn {
+    margin-top: 0.6rem; background: var(--orange); color: #fff; border: none; border-radius: 999px;
+    font-family: inherit; font-weight: 600; font-size: 0.95rem; padding: 0.8rem; cursor: pointer;
+  }
+  .save-status { text-align: center; font-size: 0.78rem; color: var(--accept); min-height: 1.2em; margin-top: 0.5rem; }
+</style>
+</head>
+<body>
+
+  <!-- Dial screen -->
+  <div class="screen active" id="screen-dial">
+    <div class="topbar">
+      <div class="brand">CarePyre SIP Phone</div>
+      <button class="icon-btn" onclick="showScreen('config')" title="Settings">&#9881;</button>
+    </div>
+    <div class="number-display" id="number-display"></div>
+    <div class="keypad" id="keypad"></div>
+    <div class="dial-actions">
+      <button class="del-btn" onclick="backspace()" title="Delete">&#9003;</button>
+      <button class="call-btn" onclick="placeCall()" title="Call">&#9742;</button>
+    </div>
+    <div class="demo-row">
+      <button class="demo-link" onclick="simulateIncomingCall()">Simulate incoming call (demo -- no real signaling yet)</button>
+    </div>
+  </div>
+
+  <!-- Incoming call screen -->
+  <div class="screen call-screen" id="screen-call">
+    <div class="call-status" id="call-status">Incoming call</div>
+    <div>
+      <div class="caller-avatar" id="caller-avatar">?</div>
+      <div class="caller-name" id="caller-name">Unknown Caller</div>
+      <div class="caller-number" id="caller-number">sip:unknown@carepyre.org</div>
+    </div>
+    <div class="call-actions">
+      <div>
+        <button class="round-btn decline" onclick="endCall()">&#9587;</button>
+        <span class="round-btn-label">Decline</span>
+      </div>
+      <div>
+        <button class="round-btn accept" onclick="acceptCall()">&#9742;</button>
+        <span class="round-btn-label">Accept</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Config screen -->
+  <div class="screen config-screen" id="screen-config">
+    <div class="topbar">
+      <button class="icon-btn" onclick="showScreen('dial')" title="Back">&#8592;</button>
+      <div class="brand">Account Settings</div>
+      <div style="width:2.4rem"></div>
+    </div>
+    <form id="config-form" onsubmit="saveConfig(event)">
+      <div class="field">
+        <label for="cfg-display-name">Display name</label>
+        <input id="cfg-display-name" type="text" placeholder="e.g. Front Desk">
+      </div>
+      <div class="field">
+        <label for="cfg-sip-uri">SIP URI</label>
+        <input id="cfg-sip-uri" type="text" placeholder="sip:you@carepyre.org">
+      </div>
+      <div class="field">
+        <label for="cfg-server">SIP server</label>
+        <input id="cfg-server" type="text" placeholder="carepyre.org">
+      </div>
+      <div class="field">
+        <label for="cfg-port">Port</label>
+        <input id="cfg-port" type="number" placeholder="5060" value="5060">
+      </div>
+      <div class="field">
+        <label for="cfg-transport">Transport</label>
+        <select id="cfg-transport">
+          <option value="UDP" selected>UDP</option>
+          <option value="TCP">TCP</option>
+          <option value="TLS">TLS</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="cfg-password">Password</label>
+        <input id="cfg-password" type="password" placeholder="••••••••">
+      </div>
+      <button class="save-btn" type="submit">Save</button>
+      <div class="save-status" id="save-status"></div>
+    </form>
+  </div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -140,6 +140,53 @@ linked C, since this is a JVM host, not a C one.
   established. Deliberately does NOT embed `libcarepyre_sip.so` yet — see gap #2 above (the real,
   newly-found SDL2-for-NDK blocker) for why, and for the real next step.
 
+- **Phase 6 — real UI SHIPPED** (kanban CP-SIP-CONTINUE-123/CP-SIP-CONTINUE/CP-SIP-124455/
+  CP-SIP-24332). **The real architecture decision, resolving CP-SIP-CONTINUE's own question
+  ("WE MAY NEED TO USE WEB TECHNOLOGIES FOR THE INTERFACE IF WE WANT TO GET IT UP AND RUNNING
+  SUPER FAST TO ITERATE")**: a local, bundled HTML/CSS/JS UI (`android/app/src/main/assets/`),
+  rendered in a plain `android.webkit.WebView` pointed at `file:///android_asset/index.html` —
+  not PARENA's own UI surface. PARENA has no proven Android UI target today (gap #2's own
+  SDL2/NDK cross-compile blocker applies just as much to a hypothetical PARENA-native UI as it
+  does to the SIP/RTP core), so building the UI in PARENA now would mean solving that same
+  unsolved problem twice, for no real gain — the UI has no dependency on PARENA's own compiled
+  output at all. WebView-in-a-native-Activity is also not a new pattern for this monorepo:
+  MJOLNIR already ships it (`ui/products/WebViewScreen.kt`, Accompanist `WebView` for remote
+  product panels) — this reuses the same real Android component, just pointed at a local bundled
+  page instead of a remote URL, which is what makes it iterate fast (`file://` load, no network,
+  no build step to see a layout change beyond reloading the WebView).
+  - **CP-SIP-124455 (`/plan` — dial screen, incoming call screen, config screen)**: all three
+    real, working screens shipped as one single-page app (`index.html`, screen `<div>`s toggled
+    by `app.js`'s `showScreen()`), not separate native Activities — simplest real fit for a
+    WebView shell, and keeps every screen's markup/state in one reviewable place. **Dial**: a
+    12-key keypad, running number display, call/backspace buttons, a gear icon to Config, and a
+    clearly-labeled demo-only "Simulate incoming call" control (see below). **Incoming call**:
+    caller name/number placeholders, round Accept/Decline buttons (green/red — a deliberate,
+    named departure from the STYLE_GUIDE.md palette for exactly this one universal phone-call
+    convention, not a silent inconsistency). **Config**: display name, SIP URI, server, port,
+    transport, password — saved to `localStorage` on this device only (the password field is
+    deliberately excluded from that persistence — see `app.js`'s own comment on the real, better
+    home for it, Android Keystore, once a real account-storage need exists).
+  - **CP-SIP-CONTINUE-123 ("CAN WE USE THE NICE JET BRAINS FONT?")**: yes — JetBrains Mono
+    (SIL OFL-licensed), bundled locally under `assets/fonts/` (Regular/Medium/Bold `.woff2`,
+    plus the real `OFL.txt`), loaded via `@font-face`. STYLE_GUIDE.md's "no external font
+    loading" rule is about the public marketing site avoiding network requests; this is a
+    bundled, offline app asset, so a local monospace webfont is a considered exception to that
+    rule's spirit (offline-first), not a violation of it.
+  - **Real, honest scope, same as Phase 5**: no real SIP signaling is wired in yet (gap #2/#3
+    below still block it) — `placeCall`/`acceptCall`/`endCall`/`saveConfig` in `app.js` are real,
+    named hand-off points for the native JNI bridge once it exists, not stand-ins pretending to
+    be it. The dial screen's "Simulate incoming call" control exists only so the incoming-call
+    screen is reachable and reviewable before real signaling exists, and is labeled as a demo
+    both in its own button text and in code comments.
+  - **CP-SIP-24332 (`/design` — "make it look nice")**: a real Claude Design canvas of these same
+    three screens (static mockups, same CarePyre palette + JetBrains Mono) —
+    https://claude.ai/code/artifact/935808bf-007d-4ab2-a03a-1b2e3cee1241 — for founder visual
+    review alongside this real, functional build. Sample data on the mockup (caller name
+    "Maria Delgado", "Front Desk" account) is placeholder, not real.
+  - Verified locally as far as this sandbox can go (`./gradlew tasks` succeeds; `assembleDebug`
+    fails ONLY on "SDK location not found," unchanged from Phase 5), final build verification
+    via CI as established.
+
 Phase 1 is the real, concrete "give us something we can iterate from" SIP-0001 asked for —
 scoped small on purpose, since it's the one step that removes a genuine unknown (does the
 PARENA→C→.so→JNI chain actually work) rather than adding more code on an unproven foundation.

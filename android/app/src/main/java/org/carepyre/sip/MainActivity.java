@@ -1,48 +1,42 @@
 package org.carepyre.sip;
 
 import android.app.Activity;
-import android.graphics.Color;
 import android.os.Bundle;
-import android.widget.LinearLayout;
-import android.widget.TextView;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 
 /**
- * CarePyre SIP Phone -- real, minimal Android scaffold for kanban CP-SIP-9911 ("Android APK
- * should be in releases"). This installs and runs on a real device/emulator, but deliberately
- * does NOT embed native/sip-jni-proof's own libcarepyre_sip.so yet.
+ * CarePyre SIP Phone -- real Android host for the bundled WebView UI (kanban
+ * CP-SIP-CONTINUE-123/CP-SIP-CONTINUE/CP-SIP-124455/CP-SIP-24332). See
+ * docs/SIP_PHONE_ANDROID_NORTHSTAR.md's "Phase 6" for the real architecture decision this
+ * implements: three real screens (Dial / Incoming Call / Config) as a local, bundled HTML/CSS/JS
+ * page (app/src/main/assets/index.html), rendered in a plain android.webkit.WebView pointed at
+ * file:///android_asset/index.html -- NOT PARENA's own UI surface (PARENA has no proven Android
+ * UI target today, see gap #2's real SDL2/NDK cross-compile blocker), and the same real
+ * WebView-in-a-native-Activity pattern MJOLNIR already establishes in this monorepo (its own
+ * Accompanist WebView for remote product panels -- this is the same underlying Android
+ * component, just pointed at a local bundled page instead of a remote URL).
  *
- * Real, honest reason, found while scoping this exact card: parena_runtime.h unconditionally
- * includes <SDL2/SDL.h>/<SDL2/SDL_ttf.h> (stdlib/sdl2.prn is "built in, same tier as core"), so
- * cross-compiling it for a real Android ABI via the NDK needs a real Android-targeted SDL2
- * build -- a genuinely separate, harder problem than the desktop JNI proof (Phase 1) solved,
- * not a simple "apt-get install libsdl2-dev" the NDK toolchain has no equivalent of. See
- * docs/SIP_PHONE_ANDROID_NORTHSTAR.md's own updated Phase 5 for the real, not-yet-solved gap
- * this leaves. This screen is real, installable, "something to iterate from" for the Android
- * side specifically, same real framing SIP-0001's own card text already used for Phase 1.
+ * Real, honest scope, matching the WebView UI's own header comment: no native SIP core is wired
+ * in here yet (northstar gap #2) -- this Activity is a real, working shell to iterate the actual
+ * interaction design in, not a stand-in for the native bridge.
  */
 public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        LinearLayout layout = new LinearLayout(this);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(48, 96, 48, 48);
+        WebView webView = new WebView(this);
+        // javaScriptEnabled: the UI's own app.js needs it (keypad, screen transitions, config
+        // form). domStorageEnabled: app.js's saveConfig()/loadConfig() use localStorage for the
+        // real, minimal local account-config persistence named in its own header comment.
+        webView.getSettings().setJavaScriptEnabled(true);
+        webView.getSettings().setDomStorageEnabled(true);
+        // Keep navigation inside this WebView (there is nothing to hand off to an external
+        // browser for -- every real link this app has is a local asset).
+        webView.setWebViewClient(new WebViewClient());
+        webView.loadUrl("file:///android_asset/index.html");
 
-        TextView title = new TextView(this);
-        title.setText("CarePyre SIP Phone");
-        title.setTextSize(24);
-        title.setTextColor(Color.BLACK);
-        layout.addView(title);
-
-        TextView status = new TextView(this);
-        status.setText("Real Android scaffold -- the native SIP/RTP core "
-            + "(PARENA, verified via a real JNI proof on desktop) is not wired in here yet. "
-            + "See docs/SIP_PHONE_ANDROID_NORTHSTAR.md for the real, honest reason "
-            + "(Android NDK cross-compilation needs its own SDL2 build) and the real next step.");
-        status.setPadding(0, 32, 0, 0);
-        layout.addView(status);
-
-        setContentView(layout);
+        setContentView(webView);
     }
 }
