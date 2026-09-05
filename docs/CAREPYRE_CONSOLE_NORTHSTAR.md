@@ -104,6 +104,29 @@ IDUNA_PRO's own source):
    IDUNA_PRO's already-existing `BASE_URL` env var to the real public URL, a pure ops config
    change, zero IDUNA_PRO source touched.
 
+## Real console screens shipped (2026-09-05, kanban CP-SIP-1244543543)
+
+Founder: "we are going to need the console screens for the admins and for the users of the
+platform to reset their password and see their sip information."
+
+- **Self-service password change** — a real, found-live, GENERIC IDUNA_PRO gap (not CarePyre
+  branding) fixed directly in IDUNA_PRO itself: `PATCH /api/v1/users/{uid}` already changes a
+  password but requires `users.admin`, with no self-access carve-out — a regular local user had
+  no way to change their own. Fixed with a new `POST /api/v1/auth/change-password` (verifies the
+  caller's own current password first). `console.html` now has a real "Change password" panel
+  using it — live-verified against the real, running deployment: old password rejected after
+  the change, new one accepted.
+- **"Your SIP account"** — a real, new `sip_accounts` table + `GET /api/v1/sip-accounts/me`
+  mapping a user to their manually-provisioned Asterisk extension
+  (`PARENA/ops/asterisk/pjsip_carepyre_phone.conf`). Real, honest v0 boundary: this is metadata
+  an admin enters by hand after provisioning a real Asterisk extension — not live, dynamic
+  per-user Asterisk provisioning (a real, separate, substantially bigger piece of work, named,
+  not attempted). `console.html` shows it, or an honest "not assigned yet" message.
+- **Admin panel** — shown only when the signed-in identity's own `effective_permissions`
+  includes `users.admin`: lists every user, lets an admin assign/edit their SIP extension
+  (`PUT /api/v1/sip-accounts/{uid}`) and reset their password
+  (`PATCH /api/v1/users/{uid}` with a new password, the pre-existing admin-only path).
+
 ## What's NOT done here (real, honest, not glossed over)
 - **No real multi-tenancy.** This is one IDUNA_PRO instance, standing in as CarePyre's own
   console — not the real, future tenant-provisioning control plane

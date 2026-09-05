@@ -24,6 +24,18 @@
   local-user tier IDUNA_PRO currently grants kanban.access to (see IDUNA_PRO/internal/http/
   handlers/local_auth.go's own localUserPermissions) -- a real, separate, later product decision
   for whether a CarePyre-tier account should get it too, not assumed here.
+
+  CP-SIP-1244543543 ("console screens for the admins and for the users ... to reset their
+  password and see their sip information") adds: a self-service change-password form (a real,
+  found-live IDUNA_PRO gap fixed for this -- PATCH /api/v1/users/{uid} required users.admin with
+  no self-access carve-out, so a regular user had no way to change their own password at all;
+  fixed generically in IDUNA_PRO itself via the new POST /api/v1/auth/change-password, not
+  CarePyre-specific branding); a "Your SIP account" panel reading the new, real
+  GET /api/v1/sip-accounts/me (real, honest v0: this is metadata an admin enters after manually
+  provisioning a real Asterisk extension, not live per-user Asterisk provisioning -- see
+  IDUNA_PRO's own sip_accounts migration comment); and an admin-only panel (shown only when
+  "users.admin" is in the signed-in identity's own effective_permissions) to list users, assign
+  their SIP account, and reset a user's password.
 -->
 <html lang="en">
 <head>
@@ -36,7 +48,7 @@
     --blue: #3FA9DC; --blue-dark: #1D7EA6;
     --cyan: #22D3EE; --orange: #FF8A3D;
     --text: #1A2733; --text-muted: #5B6B76; --border: #D6E8F0;
-    --error: #C0392B;
+    --error: #C0392B; --success: #2FAE6B;
   }
   * { box-sizing: border-box; }
   body {
@@ -54,12 +66,14 @@
   }
   .brand { display: flex; align-items: center; gap: 0.6rem; font-weight: 700; color: var(--blue-dark); font-size: 1.1rem; }
   .brand .dot { width: 10px; height: 10px; border-radius: 999px; background: var(--orange); }
-  main { max-width: 480px; margin: 0 auto; padding: 3rem 1.5rem 4rem; }
+  main { max-width: 480px; margin: 0 auto; padding: 3rem 1.5rem 4rem; display: flex; flex-direction: column; gap: 1.5rem; }
+  main.wide { max-width: 720px; }
   .card {
     background: var(--bg); border: 1px solid var(--border); border-radius: 14px;
     padding: 2rem; box-shadow: 0 12px 32px -20px rgba(63,169,220,0.35);
   }
   h1 { font-size: 1.5rem; margin: 0 0 0.4rem; color: var(--text); }
+  h2 { font-size: 1.1rem; margin: 0 0 0.4rem; color: var(--text); }
   .sub { color: var(--text-muted); margin: 0 0 1.6rem; font-size: 0.92rem; }
   label { display: block; font-size: 0.78rem; color: var(--text-muted); margin: 0 0 0.3rem; font-weight: 600; }
   input {
@@ -73,9 +87,11 @@
   }
   button:hover { filter: brightness(1.05); }
   button.secondary { background: transparent; border: 2px solid var(--blue); color: var(--blue-dark); margin-top: 0.7rem; }
+  button.small { width: auto; padding: 0.4rem 0.8rem; font-size: 0.82rem; border-radius: 999px; }
   .toggle { text-align: center; margin-top: 1.2rem; font-size: 0.85rem; color: var(--text-muted); }
   .toggle button { all: unset; cursor: pointer; color: var(--blue-dark); text-decoration: underline; }
   .error { color: var(--error); font-size: 0.85rem; margin: -0.6rem 0 1rem; }
+  .success-msg { color: var(--success); font-size: 0.85rem; margin: -0.6rem 0 1rem; }
   .hidden { display: none !important; }
 
   .id-row { display: flex; justify-content: space-between; padding: 0.7rem 0; border-bottom: 1px solid var(--border); font-size: 0.92rem; }
@@ -88,6 +104,19 @@
     margin: 0.2rem 0.3rem 0 0;
   }
   .signout { text-align: center; margin-top: 1.6rem; }
+
+  details.section { border-top: 1px solid var(--border); margin-top: 1.4rem; padding-top: 1.2rem; }
+  details.section summary { cursor: pointer; font-weight: 600; font-size: 0.92rem; color: var(--blue-dark); list-style: none; }
+  details.section summary::-webkit-details-marker { display: none; }
+  details.section summary::before { content: "+ "; }
+  details.section[open] summary::before { content: "\2212 "; }
+  details.section .body { margin-top: 1rem; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 0.55rem 0.5rem; border-bottom: 1px solid var(--border); }
+  th { color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  td input { margin-bottom: 0; padding: 0.4rem 0.5rem; font-size: 0.82rem; }
+  .row-actions { display: flex; gap: 0.4rem; align-items: center; }
 </style>
 </head>
 <body>
@@ -97,7 +126,7 @@
   <a href="/index.html">carepyre.org</a>
 </header>
 
-<main>
+<main id="main">
   <!-- Auth card: login/register toggle -->
   <div class="card" id="auth-card">
     <h1 id="auth-title">Sign in</h1>
@@ -131,7 +160,50 @@
       <span class="k">Permissions</span>
       <div id="c-permissions" style="margin-top:0.4rem;"></div>
     </div>
+
+    <!-- Your SIP account -->
+    <details class="section">
+      <summary>Your SIP account</summary>
+      <div class="body" id="sip-info-body">
+        <p class="sub" style="margin:0;">Loading…</p>
+      </div>
+    </details>
+
+    <!-- Change password -->
+    <details class="section">
+      <summary>Change password</summary>
+      <div class="body">
+        <div id="pw-error" class="error hidden"></div>
+        <div id="pw-success" class="success-msg hidden"></div>
+        <form id="pw-form">
+          <label for="pw-current">Current password</label>
+          <input id="pw-current" type="password" required autocomplete="current-password">
+          <label for="pw-new">New password</label>
+          <input id="pw-new" type="password" required minlength="8" autocomplete="new-password">
+          <button type="submit">Update password</button>
+        </form>
+      </div>
+    </details>
+
     <div class="signout"><button class="secondary" id="signout-btn">Sign out</button></div>
+  </div>
+
+  <!-- Admin panel: only rendered when the signed-in identity's own effective_permissions
+       includes users.admin (server-enforced too -- every call below still requires the real
+       permission; this hidden-by-default panel is a UX convenience, not the actual gate). -->
+  <div class="card hidden" id="admin-card">
+    <h2>Admin — Users</h2>
+    <p class="sub">Assign a SIP account or reset a password for any user.</p>
+    <div id="admin-error" class="error hidden"></div>
+    <div id="admin-success" class="success-msg hidden"></div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr><th>UID</th><th>Email</th><th>Status</th><th>SIP extension</th><th></th></tr>
+        </thead>
+        <tbody id="admin-users-body"></tbody>
+      </table>
+    </div>
   </div>
 </main>
 
@@ -242,6 +314,10 @@
     }
   }
 
+  function authHeaders() {
+    return { 'Authorization': 'Bearer ' + localStorage.getItem(TOKEN_KEY) };
+  }
+
   function renderConsole(data) {
     const identity = data.identity || {};
     const rbac = data.rbac || {};
@@ -264,11 +340,170 @@
     }
     els.authCard.classList.add('hidden');
     els.consoleCard.classList.remove('hidden');
+
+    loadMySipAccount();
+
+    const isAdmin = perms.includes('users.admin');
+    document.getElementById('admin-card').classList.toggle('hidden', !isAdmin);
+    document.getElementById('main').classList.toggle('wide', isAdmin);
+    if (isAdmin) loadAdminUsers();
+  }
+
+  // ---- Your SIP account (CP-SIP-1244543543) ----
+  async function loadMySipAccount() {
+    const body = document.getElementById('sip-info-body');
+    try {
+      const res = await fetch(API_BASE + '/sip-accounts/me', { headers: authHeaders() });
+      if (res.status === 404) {
+        body.innerHTML = '<p class="sub" style="margin:0;">No SIP account assigned yet — ask an admin.</p>';
+        return;
+      }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const acct = await res.json();
+      body.innerHTML =
+        '<div class="id-row"><span class="k">Extension</span><span class="v">' + esc(acct.extension) + '</span></div>' +
+        '<div class="id-row"><span class="k">SIP server</span><span class="v">' + esc(acct.sip_server) + '</span></div>' +
+        '<div class="id-row"><span class="k">Port</span><span class="v">' + esc(String(acct.sip_port)) + '</span></div>' +
+        '<p class="sub" style="margin:0.8rem 0 0;">Use these to register a SIP client (or the CarePyre SIP Phone app, once its own native signaling is wired in).</p>';
+    } catch (err) {
+      body.innerHTML = '<p class="error" style="margin:0;">Could not load your SIP account: ' + esc(err.message) + '</p>';
+    }
+  }
+
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s == null ? '' : String(s);
+    return d.innerHTML;
+  }
+
+  // ---- Change password ----
+  const pwForm = document.getElementById('pw-form');
+  const pwError = document.getElementById('pw-error');
+  const pwSuccess = document.getElementById('pw-success');
+  pwForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    pwError.classList.add('hidden');
+    pwSuccess.classList.add('hidden');
+    const current = document.getElementById('pw-current').value;
+    const next = document.getElementById('pw-new').value;
+    try {
+      const res = await fetch(API_BASE + '/auth/change-password', {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+        body: JSON.stringify({ current_password: current, new_password: next }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        pwError.textContent = body.error || ('Could not update password (HTTP ' + res.status + ').');
+        pwError.classList.remove('hidden');
+        return;
+      }
+      pwSuccess.textContent = 'Password updated.';
+      pwSuccess.classList.remove('hidden');
+      pwForm.reset();
+    } catch (err) {
+      pwError.textContent = 'Could not reach the console API: ' + err.message;
+      pwError.classList.remove('hidden');
+    }
+  });
+
+  // ---- Admin: users, SIP assignment, password reset ----
+  async function loadAdminUsers() {
+    const tbody = document.getElementById('admin-users-body');
+    const adminError = document.getElementById('admin-error');
+    adminError.classList.add('hidden');
+    try {
+      const [usersRes, sipRes] = await Promise.all([
+        fetch(API_BASE + '/users', { headers: authHeaders() }),
+        fetch(API_BASE + '/sip-accounts', { headers: authHeaders() }),
+      ]);
+      if (!usersRes.ok) throw new Error('HTTP ' + usersRes.status + ' loading users');
+      const users = await usersRes.json();
+      const sipAccounts = sipRes.ok ? await sipRes.json() : [];
+      const sipByUID = {};
+      for (const a of sipAccounts) sipByUID[a.local_uid] = a;
+
+      tbody.innerHTML = '';
+      for (const u of users) {
+        const tr = document.createElement('tr');
+        const existing = sipByUID[u.local_uid];
+        tr.innerHTML =
+          '<td>' + esc(u.local_uid) + '</td>' +
+          '<td>' + esc(u.email) + '</td>' +
+          '<td>' + esc(u.status) + '</td>' +
+          '<td><input type="text" value="' + esc(existing ? existing.extension : '') + '" placeholder="e.g. 1000" data-uid="' + esc(u.local_uid) + '" class="ext-input"></td>' +
+          '<td class="row-actions">' +
+            '<button class="small secondary assign-btn" data-uid="' + esc(u.local_uid) + '">Save</button>' +
+            '<button class="small reset-pw-btn" data-uid="' + esc(u.local_uid) + '">Reset password</button>' +
+          '</td>';
+        tbody.appendChild(tr);
+      }
+
+      tbody.querySelectorAll('.assign-btn').forEach(btn => {
+        btn.addEventListener('click', () => assignSip(btn.dataset.uid));
+      });
+      tbody.querySelectorAll('.reset-pw-btn').forEach(btn => {
+        btn.addEventListener('click', () => adminResetPassword(btn.dataset.uid));
+      });
+    } catch (err) {
+      adminError.textContent = 'Could not load users: ' + err.message;
+      adminError.classList.remove('hidden');
+    }
+  }
+
+  function adminMessage(ok, text) {
+    const errEl = document.getElementById('admin-error');
+    const okEl = document.getElementById('admin-success');
+    errEl.classList.add('hidden');
+    okEl.classList.add('hidden');
+    (ok ? okEl : errEl).textContent = text;
+    (ok ? okEl : errEl).classList.remove('hidden');
+  }
+
+  async function assignSip(uid) {
+    const input = document.querySelector('.ext-input[data-uid="' + uid + '"]');
+    const extension = input.value.trim();
+    if (!extension) { adminMessage(false, 'Enter an extension before saving.'); return; }
+    try {
+      // sip_server/sip_port default to this box's own real, current values -- an admin who
+      // needs to point a specific user at a different server can still do so via the API
+      // directly; the console's own v0 UI only needs the one real deployment that exists today.
+      const res = await fetch(API_BASE + '/sip-accounts/' + encodeURIComponent(uid), {
+        method: 'PUT',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+        body: JSON.stringify({ extension, sip_server: '198.58.107.85', sip_port: 5060 }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) { adminMessage(false, body.error || ('Could not save (HTTP ' + res.status + ').')); return; }
+      adminMessage(true, 'Saved extension ' + extension + ' for user ' + uid + '.');
+    } catch (err) {
+      adminMessage(false, 'Could not reach the console API: ' + err.message);
+    }
+  }
+
+  async function adminResetPassword(uid) {
+    const newPassword = window.prompt('New password for user ' + uid + ' (min 8 characters):');
+    if (!newPassword) return;
+    if (newPassword.length < 8) { adminMessage(false, 'Password must be at least 8 characters.'); return; }
+    try {
+      const res = await fetch(API_BASE + '/users/' + encodeURIComponent(uid), {
+        method: 'PATCH',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+        body: JSON.stringify({ password: newPassword }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) { adminMessage(false, body.error || ('Could not reset password (HTTP ' + res.status + ').')); return; }
+      adminMessage(true, 'Password reset for user ' + uid + '.');
+    } catch (err) {
+      adminMessage(false, 'Could not reach the console API: ' + err.message);
+    }
   }
 
   els.signoutBtn.addEventListener('click', () => {
     localStorage.removeItem(TOKEN_KEY);
     els.consoleCard.classList.add('hidden');
+    document.getElementById('admin-card').classList.add('hidden');
+    document.getElementById('main').classList.remove('wide');
     els.authCard.classList.remove('hidden');
     els.authForm.reset();
     setMode('login');
