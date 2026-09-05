@@ -42,6 +42,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CarePyre Console</title>
+<!-- QR onboarding (CP-SIP-1243445, "we are going to want to have qr codes help with the
+     onboarding") -- real, well-known client-side QR generator, no server round-trip needed
+     since the SIP URI it encodes is already loaded into the page. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   :root {
     --bg: #FFFFFF; --bg-soft: #EAF6FB;
@@ -205,6 +209,31 @@
       </table>
     </div>
   </div>
+
+  <!-- Twilio admin panel (CP-SIP-242414/TWILLIO-API-124): only rendered when the signed-in
+       identity's own effective_permissions includes twilio.admin -- a real, separate
+       permission from users.admin (see IDUNA_PRO's own localUserPermissions). All calls go
+       through IDUNA_PRO's own credential-holding proxy (/api/v1/twilio/*) -- the real Twilio
+       API Key never reaches this page. -->
+  <div class="card hidden" id="twilio-card">
+    <h2>Twilio</h2>
+    <p class="sub">Trunk, numbers, and balance for this account.</p>
+    <div id="twilio-error" class="error hidden"></div>
+    <div id="twilio-success" class="success-msg hidden"></div>
+    <div id="twilio-body"><p class="sub" style="margin:0;">Loading…</p></div>
+    <details class="section">
+      <summary>Create a trunk</summary>
+      <div class="body">
+        <form id="twilio-trunk-form">
+          <label for="twilio-trunk-name">Friendly name</label>
+          <input id="twilio-trunk-name" type="text" value="CarePyre" required>
+          <label for="twilio-trunk-domain">Termination domain</label>
+          <input id="twilio-trunk-domain" type="text" placeholder="carepyre.pstn.twilio.com" required>
+          <button type="submit">Create trunk</button>
+        </form>
+      </div>
+    </details>
+  </div>
 </main>
 
 <script>
@@ -344,9 +373,12 @@
     loadMySipAccount();
 
     const isAdmin = perms.includes('users.admin');
+    const isTwilioAdmin = perms.includes('twilio.admin');
     document.getElementById('admin-card').classList.toggle('hidden', !isAdmin);
-    document.getElementById('main').classList.toggle('wide', isAdmin);
+    document.getElementById('twilio-card').classList.toggle('hidden', !isTwilioAdmin);
+    document.getElementById('main').classList.toggle('wide', isAdmin || isTwilioAdmin);
     if (isAdmin) loadAdminUsers();
+    if (isTwilioAdmin) loadTwilioStatus();
   }
 
   // ---- Your SIP account (CP-SIP-1244543543) ----
@@ -364,10 +396,24 @@
         '<div class="id-row"><span class="k">Extension</span><span class="v">' + esc(acct.extension) + '</span></div>' +
         '<div class="id-row"><span class="k">SIP server</span><span class="v">' + esc(acct.sip_server) + '</span></div>' +
         '<div class="id-row"><span class="k">Port</span><span class="v">' + esc(String(acct.sip_port)) + '</span></div>' +
-        '<p class="sub" style="margin:0.8rem 0 0;">Use these to register a SIP client (or the CarePyre SIP Phone app, once its own native signaling is wired in).</p>';
+        '<p class="sub" style="margin:0.8rem 0 0;">Use these to register a SIP client (or the CarePyre SIP Phone app, once its own native signaling is wired in).</p>' +
+        '<div id="sip-qr" style="display:flex;justify-content:center;margin-top:1rem;"></div>' +
+        '<p class="sub" style="margin:0.6rem 0 0;text-align:center;">Scan with a SIP client that supports QR onboarding.</p>';
+      renderSipQR(acct);
     } catch (err) {
       body.innerHTML = '<p class="error" style="margin:0;">Could not load your SIP account: ' + esc(err.message) + '</p>';
     }
+  }
+
+  // renderSipQR: real, client-side QR generation (CP-SIP-1243445) -- encodes a standard
+  // sip: URI (RFC 3261's own real URI scheme, what SIP clients that support "scan to add
+  // account" already expect) rather than inventing a custom onboarding payload format.
+  function renderSipQR(acct) {
+    const el = document.getElementById('sip-qr');
+    if (!el || typeof QRCode === 'undefined') return;
+    el.innerHTML = '';
+    const sipUri = 'sip:' + acct.extension + '@' + acct.sip_server + ':' + acct.sip_port;
+    new QRCode(el, { text: sipUri, width: 160, height: 160 });
   }
 
   function esc(s) {
@@ -499,10 +545,78 @@
     }
   }
 
+  // ---- Twilio (CP-SIP-242414/TWILLIO-API-124) ----
+  function twilioMessage(ok, text) {
+    const errEl = document.getElementById('twilio-error');
+    const okEl = document.getElementById('twilio-success');
+    errEl.classList.add('hidden');
+    okEl.classList.add('hidden');
+    (ok ? okEl : errEl).textContent = text;
+    (ok ? okEl : errEl).classList.remove('hidden');
+  }
+
+  async function loadTwilioStatus() {
+    const body = document.getElementById('twilio-body');
+    try {
+      const res = await fetch(API_BASE + '/twilio/status', { headers: authHeaders() });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        body.innerHTML = '<p class="error" style="margin:0;">' + esc(data.error || ('HTTP ' + res.status)) + '</p>';
+        return;
+      }
+      let html = '';
+      if (data.balance) {
+        html += '<div class="id-row"><span class="k">Balance</span><span class="v">' +
+          esc(data.balance.currency) + ' ' + esc(data.balance.balance) + '</span></div>';
+      }
+      html += '<div class="id-row"><span class="k">Trunks</span><span class="v">' + esc(String((data.trunks || []).length)) + '</span></div>';
+      for (const t of (data.trunks || [])) {
+        html += '<div class="id-row"><span class="k">' + esc(t.friendly_name) + '</span><span class="v">' + esc(t.domain_name) + '</span></div>';
+      }
+      html += '<div class="id-row"><span class="k">Phone numbers</span><span class="v">' + esc(String((data.phone_numbers || []).length)) + '</span></div>';
+      for (const n of (data.phone_numbers || [])) {
+        html += '<div class="id-row"><span class="k">' + esc(n.friendly_name) + '</span><span class="v">' + esc(n.phone_number) + '</span></div>';
+      }
+      if (data.errors) {
+        for (const k in data.errors) {
+          html += '<p class="error" style="margin:0.6rem 0 0;">' + esc(k) + ': ' + esc(data.errors[k]) + '</p>';
+        }
+      }
+      body.innerHTML = html || '<p class="sub" style="margin:0;">No data.</p>';
+    } catch (err) {
+      body.innerHTML = '<p class="error" style="margin:0;">Could not reach the console API: ' + esc(err.message) + '</p>';
+    }
+  }
+
+  document.getElementById('twilio-trunk-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const friendly_name = document.getElementById('twilio-trunk-name').value.trim();
+    const domain_name = document.getElementById('twilio-trunk-domain').value.trim();
+    try {
+      const res = await fetch(API_BASE + '/twilio/trunk', {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+        body: JSON.stringify({ friendly_name, domain_name }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        // Real, honest passthrough -- if Twilio's own Trust Hub compliance block (or any other
+        // real error) is why this failed, that exact message shows here, not a generic one.
+        twilioMessage(false, body.error || ('Could not create trunk (HTTP ' + res.status + ').'));
+        return;
+      }
+      twilioMessage(true, 'Trunk created: ' + body.domain_name);
+      loadTwilioStatus();
+    } catch (err) {
+      twilioMessage(false, 'Could not reach the console API: ' + err.message);
+    }
+  });
+
   els.signoutBtn.addEventListener('click', () => {
     localStorage.removeItem(TOKEN_KEY);
     els.consoleCard.classList.add('hidden');
     document.getElementById('admin-card').classList.add('hidden');
+    document.getElementById('twilio-card').classList.add('hidden');
     document.getElementById('main').classList.remove('wide');
     els.authCard.classList.remove('hidden');
     els.authForm.reset();
