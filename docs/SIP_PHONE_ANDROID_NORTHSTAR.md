@@ -146,8 +146,21 @@ linked C, since this is a JVM host, not a C one.
   real honest `MissingMediaLine` error for a body with no media, a real malformed-line error, and
   a real built offer round-tripping back through the parser). `make test`: 345/345, zero
   regressions. Full writeup: `PARENA/STDLIB.md`'s own "sip/sdp" section.
-- **Phase 3 — a minimal transaction layer**: real INVITE state (calling → ringing → established →
-  terminated), enough to place and answer one real call, not the full RFC 3261 FSM.
+- **Phase 3 — SHIPPED.** Real, tested `PARENA/stdlib/sip/transaction.prn`: a pure, functional
+  call-state machine (`CallState`: Idle/Calling/Proceeding/Ringing/Established/Terminated;
+  `CallEvent`: the real send/recv vocabulary for both directions) with one entry point,
+  `transition(state, event, dest)`, returning the next state or a real, honest
+  `InvalidTransition` error for a nonsensical pairing (e.g. `Answer` while `Idle`, or any event
+  once `Terminated`). Real, honest v0 boundary named in the file itself: one call at a time, no
+  retransmission timers, no CANCEL/486-race handling, no call forking. Deliberately has zero
+  dependency on `sip/message.prn`/`sip/sdp.prn` — a caller maps its own parsed SIP messages to
+  `CallEvent`s; this file only owns the state graph, the same "PARENA decides, host owns the
+  platform" split this monorepo already uses everywhere else. New `make test-sip-transaction`
+  target, 14 real assertions covering both a full outbound call (Calling→Proceeding→Ringing→
+  Established→Terminated), the real "some UAs skip 180 entirely" shortcut, a full inbound
+  call (answer and decline), and three real, honest `InvalidTransition` errors including a
+  genuine protocol-violation case (`RecvBye` while still `Calling`). `make test`: 345/345, zero
+  regressions. Full writeup: `PARENA/STDLIB.md`'s own "sip/transaction" section.
 - **Phase 4 — G.711 codec + real RTP send/receive loop**, wired to Android's `AudioRecord`/
   `AudioTrack` via the same JNI bridge.
 - **Phase 5 — real Android app scaffold SHIPPED** (kanban CP-SIP-9911, "Android APK should be in
