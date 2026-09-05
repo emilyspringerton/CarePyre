@@ -1,4 +1,5 @@
 ## 2026-09-05
+- Real Terraform (Cloudflare DNS) + Ansible (Stalwart install/config) for the new, separate mail server Linode -- ops/stalwart/ (sess-20260905-0720-ec33e7c5)
 - Real SIP call setup (INVITE/ACK/BYE), RTP audio (G.711), and RFC 4733 DTMF shipped in the Android SIP phone -- v0.23.0 (sess-20260905-0720-ec33e7c5)
 - Root cause of the persistent SIP REGISTER 403 found: legacy chan_sip module was intercepting the request before PJSIP saw it. sudo-queue/57 disables chan_sip permanently. (sess-20260905-0720-ec33e7c5)
 - Added Linphone remote-provisioning: ops/linphone-provisioning-template.xml (repo, no secrets) + a real deployed instance at an unguessable token URL under /var/www/carepyre/provisioning/ (contains the real password, capability-URL security model, documented tradeoff) (sess-20260905-0720-ec33e7c5)
