@@ -88,6 +88,12 @@
   }
   .key:active { background: var(--border); }
   .key .sub { display: block; font-size: 0.55rem; letter-spacing: 0.12em; color: var(--text-muted); margin-top: 0.15rem; }
+  #call-actions-established { flex-direction: column; align-items: center; gap: 0; }
+  .in-call-keypad {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;
+    width: 100%; margin-bottom: 1.4rem;
+  }
+  .in-call-keypad .key { padding: 0.6rem 0; font-size: 1.05rem; }
   .dial-actions { display: flex; align-items: center; justify-content: center; gap: 1.2rem; margin-top: 1rem; }
   .call-btn, .del-btn {
     border: none; border-radius: 999px; width: 4rem; height: 4rem; font-size: 1.4rem; cursor: pointer;
@@ -156,12 +162,14 @@
       <button class="del-btn" onclick="backspace()" title="Delete">&#9003;</button>
       <button class="call-btn" onclick="placeCall()" title="Call">&#9742;</button>
     </div>
-    <div class="demo-row">
-      <button class="demo-link" onclick="simulateIncomingCall()">Simulate incoming call (demo -- no real signaling yet)</button>
-    </div>
   </div>
 
-  <!-- Incoming call screen -->
+  <!-- Call screen -- real for both directions now (CAREPYRE-42143124: "build the sip phone
+       pls"): shown for an incoming call (Accept/Decline), and reused for an outbound call's own
+       real Ringing/Established progression (no separate screen needed -- the same real states
+       this app's own SipClient.CallListener already reports). The old "Simulate incoming call"
+       demo button and its own call-status/caller placeholder wiring are gone -- real signaling
+       drives this screen now, not a demo. -->
   <div class="screen call-screen" id="screen-call">
     <div class="call-status" id="call-status">Incoming call</div>
     <div>
@@ -169,14 +177,25 @@
       <div class="caller-name" id="caller-name">Unknown Caller</div>
       <div class="caller-number" id="caller-number">sip:unknown@carepyre.org</div>
     </div>
-    <div class="call-actions">
+    <div class="call-actions" id="call-actions-incoming">
       <div>
-        <button class="round-btn decline" onclick="endCall()">&#9587;</button>
+        <button class="round-btn decline" onclick="rejectCall()">&#9587;</button>
         <span class="round-btn-label">Decline</span>
       </div>
       <div>
         <button class="round-btn accept" onclick="acceptCall()">&#9742;</button>
         <span class="round-btn-label">Accept</span>
+      </div>
+    </div>
+    <!-- Real in-call controls (hidden until Established) -- CAREPYRE-42143124's own DTMF ask:
+         a real, small keypad sending real RFC 4733 tones via SipClient.sendDtmf(), plus a real
+         hangup. Hidden/shown by app.js's own showScreen-adjacent toggles, not a separate
+         screen. -->
+    <div class="call-actions" id="call-actions-established" hidden>
+      <div class="in-call-keypad" id="in-call-keypad"></div>
+      <div>
+        <button class="round-btn decline" onclick="endCall()">&#9587;</button>
+        <span class="round-btn-label">Hang up</span>
       </div>
     </div>
   </div>

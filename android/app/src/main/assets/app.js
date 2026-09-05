@@ -1,10 +1,9 @@
-// CarePyre SIP Phone -- real UI-shell logic for the three bundled screens (dial / incoming call
-// / config). Client-side state ONLY: no real SIP signaling exists yet (see index.html's own
-// header comment and docs/SIP_PHONE_ANDROID_NORTHSTAR.md's gap #2/#3). This is a real,
-// functioning WebView UI to iterate the interaction design on, not a stand-in for the native
-// bridge -- when native/sip-jni-proof/'s JNI core is embedded, `placeCall`/`acceptCall`/
-// `endCall`/`saveConfig` below are the real, minimal hand-off points where the native calls
-// belong (each says so at its own call site).
+// CarePyre SIP Phone -- real UI-shell logic for the three bundled screens (dial / call / config).
+// As of CAREPYRE-42143124's "build the sip phone pls": real SIP signaling (REGISTER/INVITE/
+// ACK/BYE via SipClient.java), real RTP audio (AudioCallSession.java, G.711), and real DTMF
+// (RFC 4733) now exist natively -- this file is the real, thin JS side of that bridge, not a
+// demo shell anymore. See MainActivity.java's own SipBridge for the exact method names this
+// calls and the exact callback names Java invokes back into this file via evaluateJavascript.
 
 const KEYS = [
   ['1', ''], ['2', 'ABC'], ['3', 'DEF'],
@@ -24,6 +23,25 @@ function buildKeypad() {
   }
 }
 
+// buildInCallKeypad -- real DTMF keypad for an established call, wired to Android.sendDtmf()
+// (AudioCallSession's own RFC 4733 telephone-event sender). Separate from the dial-pad's own
+// #keypad grid above: this one sends live, not just edits #number-display.
+function buildInCallKeypad() {
+  const grid = document.getElementById('in-call-keypad');
+  if (!grid || grid.childElementCount) return;
+  for (const [digit] of KEYS) {
+    const btn = document.createElement('button');
+    btn.className = 'key';
+    btn.textContent = digit;
+    btn.onclick = () => {
+      if (typeof Android !== 'undefined' && Android.sendDtmf) {
+        Android.sendDtmf(digit);
+      }
+    };
+    grid.appendChild(btn);
+  }
+}
+
 function appendDigit(d) {
   const el = document.getElementById('number-display');
   el.textContent = (el.textContent || '') + d;
@@ -39,38 +57,78 @@ function showScreen(name) {
   document.getElementById('screen-' + name).classList.add('active');
 }
 
-// placeCall: real, minimal hand-off point -- once the native SIP core is embedded (northstar
-// gap #2), this is where a real INVITE gets sent (via the JNI bridge's own build-request call,
-// see native/sip-jni-proof/README.md) using the number currently in #number-display and the
-// account config saved by saveConfig() below. Today it's a real, honest no-op beyond a status
-// line, since there is nothing real yet to send it to.
+// placeCall: real outbound call. Hands off to Android.call(number) (MainActivity's own
+// SipBridge, which checks RECORD_AUDIO before touching SipClient.call()). UI transitions to the
+// call screen immediately in a "Calling..." state; onCallRinging()/onCallEstablished()/
+// onCallEnded() below (called FROM Java) drive it forward from there.
 function placeCall() {
   const number = document.getElementById('number-display').textContent;
   if (!number) return;
-  // Real registration (SipClient.register(), wired via the Config screen's own Save button) is
-  // real Phase 1 signaling now -- INVITE/call setup and the RTP audio loop are the real, still-
-  // unbuilt next phases this alert names honestly, not "no signaling at all" anymore.
-  window.alert('Registration works, but placing a real call needs the next phase (INVITE + RTP audio), not built yet.\n\nWould dial: ' + number);
-}
-
-// simulateIncomingCall: demo-only control (see index.html's own header comment) so the incoming-
-// call screen is reachable and reviewable before real signaling exists. Never confused with a
-// real call -- always sets an obviously-fake caller.
-function simulateIncomingCall() {
-  document.getElementById('caller-name').textContent = 'Demo Caller';
-  document.getElementById('caller-number').textContent = 'sip:demo@carepyre.org';
-  document.getElementById('caller-avatar').textContent = 'D';
+  if (typeof Android === 'undefined' || !Android.call) {
+    window.alert('No native signaling bridge available here -- run this inside the real Android app.');
+    return;
+  }
+  document.getElementById('caller-name').textContent = number;
+  document.getElementById('caller-number').textContent = number;
+  document.getElementById('caller-avatar').textContent = (number[0] || '?').toUpperCase();
+  document.getElementById('call-status').textContent = 'Calling...';
+  document.getElementById('call-actions-incoming').hidden = true;
+  document.getElementById('call-actions-established').hidden = true;
   showScreen('call');
+  Android.call(number);
 }
 
-// acceptCall/endCall: real, minimal hand-off points for the native core's own answer/hangup
-// (a real 200 OK / BYE, once wired) -- today, honest UI-only transitions back to the dial pad.
+// acceptCall/rejectCall/endCall: real hand-offs to the native core's own answer/decline/hangup
+// (a real 200 OK / 603 Decline / BYE) -- SipClient.java sends the actual SIP response, this just
+// asks it to. UI state itself is driven by the onCallX() callbacks below, not set optimistically
+// here, since the real response could still fail.
 function acceptCall() {
-  document.getElementById('call-status').textContent = 'Connected (demo -- no real audio path yet)';
-  setTimeout(() => showScreen('dial'), 900);
+  if (typeof Android !== 'undefined' && Android.answerCall) {
+    Android.answerCall();
+  }
+}
+
+function rejectCall() {
+  if (typeof Android !== 'undefined' && Android.rejectCall) {
+    Android.rejectCall();
+  }
+  showScreen('dial');
 }
 
 function endCall() {
+  if (typeof Android !== 'undefined' && Android.hangupCall) {
+    Android.hangupCall();
+  }
+  showScreen('dial');
+}
+
+// onIncomingCall/onCallRinging/onCallEstablished/onCallEnded -- called FROM Java (SipClient's
+// own CallListener, via MainActivity's evaluateJavascript), matching those exact names. Real
+// call-state machine lives here now, not a demo transition.
+function onIncomingCall(fromUri) {
+  document.getElementById('caller-name').textContent = fromUri;
+  document.getElementById('caller-number').textContent = fromUri;
+  document.getElementById('caller-avatar').textContent = (fromUri[0] || '?').toUpperCase();
+  document.getElementById('call-status').textContent = 'Incoming call...';
+  document.getElementById('call-actions-incoming').hidden = false;
+  document.getElementById('call-actions-established').hidden = true;
+  showScreen('call');
+}
+
+function onCallRinging() {
+  document.getElementById('call-status').textContent = 'Ringing...';
+}
+
+function onCallEstablished() {
+  document.getElementById('call-status').textContent = 'Connected';
+  document.getElementById('call-actions-incoming').hidden = true;
+  document.getElementById('call-actions-established').hidden = false;
+  buildInCallKeypad();
+}
+
+function onCallEnded(reason) {
+  document.getElementById('call-actions-incoming').hidden = true;
+  document.getElementById('call-actions-established').hidden = true;
   showScreen('dial');
 }
 

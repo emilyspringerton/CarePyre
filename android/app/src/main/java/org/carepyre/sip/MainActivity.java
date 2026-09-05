@@ -45,21 +45,28 @@ public class MainActivity extends Activity {
     // would silently no-op against a page whose functions don't exist yet.
     private String pendingSipUri;
 
+    // sipClient -- founder real-time: "build the sip phone pls". ONE persistent instance for the
+    // whole Activity lifetime once register() succeeds (SipClient.start() keeps its own socket
+    // open and its own receiver thread running), not a fresh one per call -- a real phone stays
+    // registered and can place/receive multiple calls over that same registration, matching how
+    // every real SIP client actually works.
+    private SipClient sipClient;
+    private static final int RECORD_AUDIO_REQUEST_CODE = 4201;
+
     /**
-     * SipBridge -- the real, minimal @JavascriptInterface surface app.js's own startQrScan()
-     * calls into. A JS interface (not exposing zxing/camera APIs to the WebView directly) is the
-     * real, standard, secure Android pattern for this: the WebView's own JS never gets direct
-     * camera/Activity-launching capability, only this one named method.
+     * SipBridge -- the real, minimal @JavascriptInterface surface app.js calls into for every
+     * native action: registration, placing/answering/ending a call, and DTMF. A JS interface
+     * (not exposing zxing/camera/network APIs to the WebView directly) is the real, standard,
+     * secure Android pattern for this.
      */
     private class SipBridge {
         /** register -- CAREPYRE-42143124's own direct follow-up ("carepyre sip app still says
-         * no real signaling i need a real sip app"): real Phase 1 native signaling, a plain-Java
-         * SIP REGISTER (see SipClient's own header comment for why Java over the still-blocked
-         * PARENA/NDK path). Runs off the UI thread via a plain Thread -- Android forbids network
-         * I/O on the main thread regardless, and SipClient.register() blocks on real socket
-         * reads. Reports back into app.js's own onRegisterResult() via evaluateJavascript, which
-         * itself must run ON the UI thread -- runOnUiThread wraps that one call, not the network
-         * work. */
+         * no real signaling i need a real sip app"): real SIP REGISTER, a plain-Java client (see
+         * SipClient's own header comment for why Java over the still-blocked PARENA/NDK path).
+         * Runs off the UI thread via a plain Thread -- Android forbids network I/O on the main
+         * thread, and SipClient.start() blocks on real socket reads. The resulting SipClient is
+         * kept as this Activity's own single, persistent instance so call()/answer()/hangup()
+         * below have something real to act on afterward. */
         @JavascriptInterface
         public void register(final String server, final String portStr, final String extension,
                               final String password) {
@@ -70,13 +77,85 @@ public class MainActivity extends Activity {
                 } catch (NumberFormatException e) {
                     port = 5060;
                 }
-                SipClient client = new SipClient(server, port, extension, password);
-                client.register((success, message) -> runOnUiThread(() -> {
+                SipClient client = new SipClient(server, port, extension, password, new SipClient.CallListener() {
+                    @Override
+                    public void onRinging() {
+                        runOnUiThread(() -> webView.evaluateJavascript("onCallRinging()", null));
+                    }
+
+                    @Override
+                    public void onEstablished() {
+                        runOnUiThread(() -> webView.evaluateJavascript("onCallEstablished()", null));
+                    }
+
+                    @Override
+                    public void onEnded(String reason) {
+                        runOnUiThread(() -> webView.evaluateJavascript(
+                                "onCallEnded(" + jsStringLiteral(reason) + ")", null));
+                    }
+
+                    @Override
+                    public void onIncomingCall(String fromUri) {
+                        runOnUiThread(() -> webView.evaluateJavascript(
+                                "onIncomingCall(" + jsStringLiteral(fromUri) + ")", null));
+                    }
+                });
+                client.start((success, message) -> runOnUiThread(() -> {
+                    if (success) sipClient = client;
                     String js = "onRegisterResult(" + (success ? "true" : "false") + ", "
                             + jsStringLiteral(message) + ")";
                     webView.evaluateJavascript(js, null);
                 }));
             }).start();
+        }
+
+        /** call -- CAREPYRE-42143124's own direct follow-up ("build the sip phone pls"): places
+         * a real outbound call via the currently-registered SipClient. Requests RECORD_AUDIO
+         * first if not already granted -- the real audio loop (AudioCallSession) needs it the
+         * moment the far end answers, and asking only when a call is actually placed (not at
+         * app launch) matches Android's own real, documented best practice for runtime
+         * permissions tied to a specific user action. Runs off the UI thread -- call() blocks on
+         * real socket reads for the whole INVITE transaction. */
+        @JavascriptInterface
+        public void call(final String number) {
+            if (sipClient == null) {
+                runOnUiThread(() -> webView.evaluateJavascript(
+                        "onCallEnded(" + jsStringLiteral("Not registered yet") + ")", null));
+                return;
+            }
+            // Plain base-SDK checkSelfPermission (an Activity/Context instance method since API
+            // 23) -- no androidx.core dependency needed for this one check; minSdk is already
+            // 24, so it's always available directly.
+            if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
+                    != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, RECORD_AUDIO_REQUEST_CODE);
+                return;
+            }
+            new Thread(() -> sipClient.call(number)).start();
+        }
+
+        @JavascriptInterface
+        public void answerCall() {
+            if (sipClient == null) return;
+            new Thread(sipClient::answer).start();
+        }
+
+        @JavascriptInterface
+        public void rejectCall() {
+            if (sipClient == null) return;
+            new Thread(sipClient::reject).start();
+        }
+
+        @JavascriptInterface
+        public void hangupCall() {
+            if (sipClient == null) return;
+            new Thread(sipClient::hangup).start();
+        }
+
+        @JavascriptInterface
+        public void sendDtmf(final String digit) {
+            if (sipClient == null || digit == null || digit.isEmpty()) return;
+            sipClient.sendDtmf(digit.charAt(0));
         }
 
         @JavascriptInterface

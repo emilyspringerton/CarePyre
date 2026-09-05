@@ -12,6 +12,21 @@
          to install and use it, just without that one shortcut. -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
+    <!-- RECORD_AUDIO: founder real-time, "build the sip phone pls"; needed by
+         AudioCallSession's own real RTP send loop (AudioRecord reads the live microphone,
+         encodes it to G.711, and sends it over the call's own RTP stream). Requested at runtime
+         too (MainActivity's own SipBridge.call(), only when a call is actually placed); a real,
+         dangerous-protection-level permission on modern Android needs both. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- INTERNET: real, honest gap found in final review. Every prior real network action in
+         this app (registration, calls, RTP audio, the whole point of this app) already
+         implicitly needed this, but it was never actually declared. A WebView alone doesn't
+         require it (file:// asset loading doesn't touch the network), which is almost certainly
+         why this went unnoticed until SipClient/AudioCallSession's own real java.net usage made
+         it a real, hard requirement; confirmed directly: apps without this permission get a real
+         SecurityException on any Socket/DatagramSocket use, not a silent failure. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:allowBackup="true"
         android:label="@string/app_name"
