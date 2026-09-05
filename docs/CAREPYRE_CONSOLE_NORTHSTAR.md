@@ -85,15 +85,26 @@ already established for the `/api/` → IDUNA proxy (`sudo-queue/14-carepyre-api
   proper's own — a CarePyre console session must never be validatable as an IDUNA session or vice
   versa.
 
-## What's NOT done here (real, honest, not glossed over)
+## Status: live (2026-09-05)
 
-- **The actual deploy hasn't run yet.** `sudo-queue/51-carepyre-console-idunapro-deploy.sh` is
-  queued (builds the binary, writes a real generated JWT secret, installs+starts
-  `idunapro.service`, pushes `console.html`, updates nginx, reloads) — needs real root, per this
-  repo's own standing sudo-queue convention. Verified as far as this sandbox can go: the full
-  register → local-login → identities/me flow tested live against a locally-booted `idunapro`
-  process on a scratch port; the actual carepyre.org deployment is real, concrete, queued
-  follow-up.
+`sudo-queue/51-carepyre-console-idunapro-deploy.sh` has been run for real — `idunapro.service` is
+up under systemd `--user` supervision, nginx's `/console-api/` proxy is live, and the full
+register → local-login → `identities/me` flow was verified end to end **through the real, public
+`https://carepyre.org/console.html` / `https://carepyre.org/console-api/...` URLs**, not just
+locally. Two real, found-live fixes landed along the way (both in `sudo-queue/51-...sh`, not
+IDUNA_PRO's own source):
+
+1. The script originally broke under `sudo` (`systemctl --user` has no D-Bus session as root) —
+   fixed with a hard guard refusing to run as root.
+2. It then still failed run as a plain user, because `XDG_RUNTIME_DIR`/`DBUS_SESSION_BUS_ADDRESS`
+   aren't reliably exported in every shell/session — fixed by setting them explicitly and
+   checking the real bus socket exists first.
+3. `identities/me`'s own `authority_signature_cluster` field defaulted to
+   `http://localhost:8081/...` (unreachable for any real external verifier) — fixed by setting
+   IDUNA_PRO's already-existing `BASE_URL` env var to the real public URL, a pure ops config
+   change, zero IDUNA_PRO source touched.
+
+## What's NOT done here (real, honest, not glossed over)
 - **No real multi-tenancy.** This is one IDUNA_PRO instance, standing in as CarePyre's own
   console — not the real, future tenant-provisioning control plane
   (`IDUNA/docs/EMILY_FOR_BUSINESS_NORTHSTAR.md`'s own "not yet built" item). Matches the
