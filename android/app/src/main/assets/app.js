@@ -47,7 +47,10 @@ function showScreen(name) {
 function placeCall() {
   const number = document.getElementById('number-display').textContent;
   if (!number) return;
-  window.alert('No real SIP signaling wired in yet -- this build is a UI shell only.\n\nWould dial: ' + number);
+  // Real registration (SipClient.register(), wired via the Config screen's own Save button) is
+  // real Phase 1 signaling now -- INVITE/call setup and the RTP audio loop are the real, still-
+  // unbuilt next phases this alert names honestly, not "no signaling at all" anymore.
+  window.alert('Registration works, but placing a real call needs the next phase (INVITE + RTP audio), not built yet.\n\nWould dial: ' + number);
 }
 
 // simulateIncomingCall: demo-only control (see index.html's own header comment) so the incoming-
@@ -71,20 +74,26 @@ function endCall() {
   showScreen('dial');
 }
 
-// saveConfig: persists the account form locally (this device only) via localStorage -- a real,
-// minimal placeholder for wherever the native core's own account/config storage eventually
-// lives. No credential ever leaves the device from this screen; there is no real registration
-// attempt yet (northstar gap #3 -- no transaction/dialog layer to register with).
+// saveConfig: persists the account form locally (this device only) via localStorage, then
+// attempts a REAL registration against the configured Asterisk server (CAREPYRE-42143124's own
+// direct follow-up: "carepyre sip app still says no real signaling i need a real sip app").
+// Real, honest v0 boundary named directly: this is Phase 1 (REGISTER) only -- see
+// MainActivity.java's own SipBridge/SipClient header comments for the real, plain-Java
+// implementation and its own named gaps (no re-register timer, no NAT traversal). No credential
+// ever leaves this device except in the real SIP REGISTER itself (never persisted to
+// localStorage -- see the comment on cfg's own shape below).
 function saveConfig(evt) {
   evt.preventDefault();
+  const extension = extractExtension(document.getElementById('cfg-sip-uri').value);
   const cfg = {
     displayName: document.getElementById('cfg-display-name').value,
     sipUri: document.getElementById('cfg-sip-uri').value,
     server: document.getElementById('cfg-server').value,
     port: document.getElementById('cfg-port').value,
     transport: document.getElementById('cfg-transport').value,
-    // Password deliberately excluded from this local demo persistence -- see README note below
-    // once a real secure-storage path (Android Keystore, not localStorage) is wired in.
+    // Password deliberately excluded from this local persistence -- see README note below
+    // once a real secure-storage path (Android Keystore, not localStorage) is wired in. It's
+    // read fresh from the form field below for the real REGISTER attempt, never written here.
   };
   try {
     localStorage.setItem('carepyre_sip_config', JSON.stringify(cfg));
@@ -97,8 +106,33 @@ function saveConfig(evt) {
   }
   const status = document.getElementById('save-status');
   status.style.color = '';
-  status.textContent = 'Saved locally on this device.';
-  setTimeout(() => { status.textContent = ''; }, 2500);
+  status.textContent = 'Saved. Registering...';
+
+  const password = document.getElementById('cfg-password').value;
+  if (typeof Android !== 'undefined' && Android.register && extension && cfg.server) {
+    Android.register(cfg.server, cfg.port || '5060', extension, password);
+  } else {
+    status.textContent = 'Saved locally on this device (no native signaling bridge available here).';
+  }
+}
+
+// extractExtension -- real, minimal pull of the extension/user part out of a sip:<ext>@<host>
+// URI (the same real shape applySipUri() above already parses out of a scanned QR).
+function extractExtension(sipUri) {
+  if (!sipUri) return '';
+  const rest = sipUri.indexOf('sip:') === 0 ? sipUri.slice(4) : sipUri;
+  const at = rest.indexOf('@');
+  return at >= 0 ? rest.slice(0, at) : rest;
+}
+
+// onRegisterResult -- called FROM Java (MainActivity's own SipBridge.register(), after
+// SipClient's real REGISTER attempt completes). Kept as a real, separate, globally-reachable
+// function since Java calls it directly by name via evaluateJavascript, same real convention as
+// onQrScanned() above.
+function onRegisterResult(success, message) {
+  const status = document.getElementById('save-status');
+  status.style.color = success ? '' : '#E5484D';
+  status.textContent = (success ? 'Registered: ' : 'Registration failed: ') + message;
 }
 
 // startQrScan / onQrScanned / applySipUri -- CAREPYRE-42143124's own "qr code scan feature to

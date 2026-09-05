@@ -52,6 +52,33 @@ public class MainActivity extends Activity {
      * camera/Activity-launching capability, only this one named method.
      */
     private class SipBridge {
+        /** register -- CAREPYRE-42143124's own direct follow-up ("carepyre sip app still says
+         * no real signaling i need a real sip app"): real Phase 1 native signaling, a plain-Java
+         * SIP REGISTER (see SipClient's own header comment for why Java over the still-blocked
+         * PARENA/NDK path). Runs off the UI thread via a plain Thread -- Android forbids network
+         * I/O on the main thread regardless, and SipClient.register() blocks on real socket
+         * reads. Reports back into app.js's own onRegisterResult() via evaluateJavascript, which
+         * itself must run ON the UI thread -- runOnUiThread wraps that one call, not the network
+         * work. */
+        @JavascriptInterface
+        public void register(final String server, final String portStr, final String extension,
+                              final String password) {
+            new Thread(() -> {
+                int port;
+                try {
+                    port = Integer.parseInt(portStr.trim());
+                } catch (NumberFormatException e) {
+                    port = 5060;
+                }
+                SipClient client = new SipClient(server, port, extension, password);
+                client.register((success, message) -> runOnUiThread(() -> {
+                    String js = "onRegisterResult(" + (success ? "true" : "false") + ", "
+                            + jsStringLiteral(message) + ")";
+                    webView.evaluateJavascript(js, null);
+                }));
+            }).start();
+        }
+
         @JavascriptInterface
         public void scanQr() {
             // Real, classic IntentIntegrator API (not the newer androidx

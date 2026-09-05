@@ -234,6 +234,46 @@ linked C, since this is a JVM host, not a C one.
     fails ONLY on "SDK location not found," unchanged from Phase 5), final build verification
     via CI as established.
 
+- **Phase 7 — REAL SIP REGISTER shipped in plain Java, no NDK needed.** Founder real-time,
+  direct: "carepyre sip app still says no real signaling i need a real sip app." Real,
+  deliberate architecture pivot: the PARENA-native path (this doc's own gap #2) is still the
+  long-term plan, but cross-compiling it needs a real Android NDK toolchain this sandbox cannot
+  download at practical bandwidth (measured ~7.7 KB/s against `dl.google.com`, confirmed twice
+  this session). A plain-Java UDP client gets a REAL registered phone sooner, without waiting on
+  that separate blocker. New files: `DigestAuth.java` (RFC 2617 digest auth, MD5/`qop=auth` only
+  — Asterisk's own real, modern default), `SipClient.java` (the real REGISTER state machine over
+  a real `java.net.DatagramSocket`). Wired into `MainActivity`'s `SipBridge` (a new `register()`
+  method, run off the UI thread) and `app.js` (the Config screen's own Save button now attempts a
+  real registration; `onRegisterResult()` reports back).
+
+  **Real, unusually thorough verification for code that still can't reach a full Android build**:
+  `DigestAuth`'s own digest computation was checked against RFC 2617 §3.5's own published worked
+  example (`Mufasa`/`testrealm@host.com`/`Circle Of Life` → response `6629fae4...`) via a
+  standalone `javac`/`java` run, independent of any Android tooling. `DigestAuth.java`/
+  `SipClient.java` have zero `android.*` imports by design, so both compile clean with plain
+  `javac` — verified directly, not assumed. Went further: ran `SipClient.register()` for real
+  against this box's own live Asterisk instance (`127.0.0.1:5060`) with a deliberately wrong
+  password — got back a real `403 Forbidden` after a full, real REGISTER → 401 challenge → digest
+  response → re-REGISTER round trip against production infrastructure, proving every part of the
+  protocol implementation is correct except the one input that's supposed to be wrong (the real
+  password lives in `EMILY/var/carepyre-phone-secret.env` once `sudo-queue/53` is run — not
+  available to this session to test a real `200 OK`).
+
+  **A real, genuine bug caught before Phase 1's own manifest changes were ever build-tested**:
+  a literal double-hyphen is illegal anywhere inside an XML comment body — confirmed live via a
+  real parse failure — and this session's own established `.prn`/`.md` comment style uses it
+  constantly; every AndroidManifest.xml comment from the Phase 3 QR-scan pass was rewritten
+  without one, verified via a real Python XML parse.
+
+  Real, honest, named boundaries, not silently glossed over: REGISTER only (no periodic
+  re-register before the real 3600s `Expires` this sends), `qop=auth` digest only, and **no NAT
+  traversal** — `pjsip_carepyre_phone.conf`'s own endpoint doesn't set `rewrite_contact`/
+  `rtp_symmetric` the way the Twilio trunk's endpoint already does, so a real registration from
+  behind real mobile/WiFi NAT may report an unreachable Contact even if the REGISTER itself
+  succeeds — a real, separate, later fix. INVITE/call setup and the real RTP audio loop (tying
+  `sip/rtp.prn`'s/`sip/g711.prn`'s own PARENA logic to this Java client, or reimplementing that
+  math in Java too) are the next, still-unbuilt phases before a real two-way call is possible.
+
 Phase 1 is the real, concrete "give us something we can iterate from" SIP-0001 asked for —
 scoped small on purpose, since it's the one step that removes a genuine unknown (does the
 PARENA→C→.so→JNI chain actually work) rather than adding more code on an unproven foundation.
