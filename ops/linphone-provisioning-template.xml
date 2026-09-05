@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  linphone-provisioning-template.xml: real Linphone remote-provisioning config (founder
+  real-time: "can you set up the linphone provisioning url?"), the standard Linphone-native
+  format for auto-configuring a real SIP account from one URL entered once in Linphone's own
+  "Remote provisioning" setting, instead of typing extension/server/port by hand. Real, standard
+  schema (Linphone's own documented lpconfig.xsd), not invented here.
+
+  Deploy: substitute __CAREPYRE_SIP_SERVER__/__CAREPYRE_SIP_PORT__/__CAREPYRE_SIP_EXTENSION__/
+  __CAREPYRE_SIP_PASSWORD__ and drop the result under /var/www/carepyre/provisioning/(a random
+  token).xml; nginx's own existing `location / { try_files ... }` block for carepyre.org already
+  serves any real static file under the site root with zero config change needed (checked
+  directly: fatbaby already owns /var/www/carepyre, no sudo needed for this part).
+
+  REAL, HONEST, DELIBERATE SECURITY TRADEOFF, not glossed over: this file's own deployed copy
+  contains the real PJSIP password in plaintext (Linphone's own remote-provisioning fetch is a
+  plain HTTPS GET with no bearer-token support built in; there is no real way to hand it an
+  Authorization header). The random 32-hex-char token in the deployed URL's own path is a real
+  capability-URL model (the same category of security as an unlisted calendar ICS feed or a
+  webhook secret): anyone who obtains the exact URL can read the password, but it is not
+  discoverable by guessing or crawling. Acceptable for this real, single-user founder-testing
+  case; if this ever needs to serve more than one real account, the right fix is a per-user,
+  authenticated provisioning endpoint (matching IDUNA_PRO's own `/api/v1/sip-accounts/me/qr`
+  pattern) rather than more static files under more random paths.
+-->
+<config xmlns="http://www.linphone.org/xsds/lpconfig.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.linphone.org/xsds/lpconfig.xsd lpconfig.xsd">
+  <section name="proxy_0">
+    <entry name="reg_proxy" overwrite="true">sip:__CAREPYRE_SIP_SERVER__:__CAREPYRE_SIP_PORT__</entry>
+    <entry name="reg_identity" overwrite="true">sip:__CAREPYRE_SIP_EXTENSION__@__CAREPYRE_SIP_SERVER__</entry>
+    <entry name="reg_expires" overwrite="true">3600</entry>
+    <entry name="reg_sendregister" overwrite="true">1</entry>
+    <entry name="publish" overwrite="true">0</entry>
+    <entry name="avpf" overwrite="true">0</entry>
+    <entry name="quality_reporting_enabled" overwrite="true">0</entry>
+  </section>
+  <section name="auth_info_0">
+    <entry name="username" overwrite="true">__CAREPYRE_SIP_EXTENSION__</entry>
+    <entry name="passwd" overwrite="true">__CAREPYRE_SIP_PASSWORD__</entry>
+    <entry name="realm" overwrite="true">asterisk</entry>
+    <entry name="domain" overwrite="true">__CAREPYRE_SIP_SERVER__</entry>
+  </section>
+  <section name="sip">
+    <entry name="default_proxy" overwrite="true">0</entry>
+  </section>
+</config>
