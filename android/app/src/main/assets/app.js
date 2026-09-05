@@ -164,7 +164,7 @@ function startQrScan() {
 // enters that field by hand regardless of which path filled in everything else.
 function applySipUri(sipUri) {
   if (!sipUri || sipUri.indexOf('sip:') !== 0) {
-    document.getElementById('save-status').textContent = 'Scanned code was not a real sip: URI.';
+    document.getElementById('save-status').textContent = 'That was not a real sip: link (should look like sip:extension@server:port).';
     document.getElementById('save-status').style.color = '#E5484D';
     return;
   }
@@ -185,7 +185,16 @@ function applySipUri(sipUri) {
   showScreen('config');
   const status = document.getElementById('save-status');
   status.style.color = '';
-  status.textContent = 'Filled in from scanned QR -- enter your password, then Save.';
+  status.textContent = 'Filled in -- enter your password, then Save.';
+}
+
+// applyPastedUri -- CAREPYRE-42143124's own direct follow-up: "give me a single field to paste
+// it in at the bottom to just handle it". Real, minimal wrapper around the same applySipUri()
+// the QR scanner and the camera-open path already use -- one parser, three real entry points
+// (scan, camera-open, paste), not three separate implementations to keep in sync.
+function applyPastedUri() {
+  const raw = document.getElementById('paste-sip-uri').value.trim();
+  applySipUri(raw);
 }
 
 // onQrScanned -- called FROM Java (MainActivity's own onActivityResult, after a real

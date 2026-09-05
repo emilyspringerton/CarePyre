@@ -89,7 +89,13 @@ public class MainActivity extends Activity {
             // not the main thread, and starting an Activity from off the main thread crashes.
             runOnUiThread(() -> {
                 IntentIntegrator integrator = new IntentIntegrator(MainActivity.this);
-                integrator.setDesiredBarcodeFormats(IntentIntegrator.QR_CODE_TYPES);
+                // Real, genuine bug caught live in actual CI (a real Android build environment,
+                // unlike this sandbox): IntentIntegrator.QR_CODE_TYPES does not exist -- there
+                // is no such collection constant in the real library source (checked directly).
+                // QR_CODE is a plain String constant ("QR_CODE"); setDesiredBarcodeFormats has a
+                // real varargs String... overload alongside the Collection<String> one, so
+                // passing the single String constant directly is the real, correct call here.
+                integrator.setDesiredBarcodeFormats(IntentIntegrator.QR_CODE);
                 integrator.setPrompt("Scan your CarePyre SIP QR code");
                 integrator.setBeepEnabled(true);
                 integrator.setOrientationLocked(false);

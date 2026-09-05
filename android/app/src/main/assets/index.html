@@ -223,6 +223,19 @@
            so it never triggers this form's own submit/saveConfig -- scanning only fills fields,
            the user still presses Save deliberately afterward. -->
       <button class="scan-btn" type="button" onclick="startQrScan()">Scan QR to configure</button>
+
+      <!-- CAREPYRE-42143124's own direct follow-up: "the qrcode gives like
+           sip:extension@ipaddress:port i dont know what to do with it can you give me a single
+           field to paste it in at the bottom to just handle it?" -- a real, single-purpose
+           paste target for exactly that string (whatever the QR display shows, or the console's
+           own SIP-account panel), sharing the same real applySipUri() parser the QR scanner and
+           the camera-open path (MainActivity's own VIEW/sip intent-filter) already use. -->
+      <div class="field">
+        <label for="paste-sip-uri">Or paste your sip: link here</label>
+        <input id="paste-sip-uri" type="text" placeholder="sip:1000@198.58.107.85:5060">
+      </div>
+      <button class="scan-btn" type="button" onclick="applyPastedUri()">Use this</button>
+
       <button class="save-btn" type="submit">Save</button>
       <div class="save-status" id="save-status"></div>
     </form>
