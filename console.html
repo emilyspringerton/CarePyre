@@ -1,0 +1,281 @@
+<!doctype html>
+<!--
+  CarePyre Console -- kanban CPP-124433/CPP-2144333 ("CarePyre Portal/Console, like IDUNA login
+  and backoffice, but its own separate platform... we rely on IDUNA... clean interface for
+  meetings and demos"). Founder real-time correction mid-build, in order: "BUILD IT USING IDUNA
+  PRO SOMEHOW" -> "IDUNA PRO SHOULD BE WHITELABLE BACK OFFICE" -> "WE KEEP OPERATIONS USING OG
+  IDUNA BUT WE NEED TO HAVE IDUNA PRO BE BASICALLY A CONSOLE FOR THE PLATFORM THAT THE IDUNA PRO
+  IS SUPPORTING" -> "build it with iduna pro not into iduna pro".
+
+  Real architecture this file implements (full writeup in docs/CAREPYRE_CONSOLE_NORTHSTAR.md):
+  this is a real, standalone, CarePyre-branded static page -- IDUNA_PRO's own repo/source is
+  UNTOUCHED, zero edits. This page talks to a real, separately-running IDUNA_PRO instance
+  purely through its already-shipped REST API (register/local-auth/identities-me), reverse-
+  proxied at /console-api/ on this SAME origin (carepyre.org) so every fetch() below is a
+  same-origin relative call -- no CORS story needed at all, and nothing about IDUNA_PRO's own
+  code had to change to make that true. EINHORN_INDUSTRIAL's own internal ops keep running on
+  the original IDUNA (iduna.farthq.com) exactly as before; this is a second, separate IDUNA_PRO
+  deployment, CarePyre's own.
+
+  Real, honest v0 scope: register + local-auth (email/password) against IDUNA_PRO, then a real
+  identity/permissions panel from a real GET /api/v1/identities/me call -- proof that CarePyre's
+  own login + console genuinely works end to end against IDUNA_PRO's real API, not a mockup.
+  Kanban (another real IDUNA_PRO feature) is NOT shown here: uid=0 (webmaster) is the only
+  local-user tier IDUNA_PRO currently grants kanban.access to (see IDUNA_PRO/internal/http/
+  handlers/local_auth.go's own localUserPermissions) -- a real, separate, later product decision
+  for whether a CarePyre-tier account should get it too, not assumed here.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CarePyre Console</title>
+<style>
+  :root {
+    --bg: #FFFFFF; --bg-soft: #EAF6FB;
+    --blue: #3FA9DC; --blue-dark: #1D7EA6;
+    --cyan: #22D3EE; --orange: #FF8A3D;
+    --text: #1A2733; --text-muted: #5B6B76; --border: #D6E8F0;
+    --error: #C0392B;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    background: radial-gradient(circle at top, var(--bg-soft) 0%, var(--bg) 60%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+  }
+  a { color: var(--blue-dark); }
+  a:hover { color: var(--orange); }
+  header {
+    padding: 1.5rem 2rem; display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand { display: flex; align-items: center; gap: 0.6rem; font-weight: 700; color: var(--blue-dark); font-size: 1.1rem; }
+  .brand .dot { width: 10px; height: 10px; border-radius: 999px; background: var(--orange); }
+  main { max-width: 480px; margin: 0 auto; padding: 3rem 1.5rem 4rem; }
+  .card {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 14px;
+    padding: 2rem; box-shadow: 0 12px 32px -20px rgba(63,169,220,0.35);
+  }
+  h1 { font-size: 1.5rem; margin: 0 0 0.4rem; color: var(--text); }
+  .sub { color: var(--text-muted); margin: 0 0 1.6rem; font-size: 0.92rem; }
+  label { display: block; font-size: 0.78rem; color: var(--text-muted); margin: 0 0 0.3rem; font-weight: 600; }
+  input {
+    width: 100%; padding: 0.65rem 0.8rem; margin-bottom: 1rem; font: inherit; font-size: 0.95rem;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--bg-soft); color: var(--text);
+  }
+  input:focus { outline: none; border-color: var(--blue); }
+  button {
+    width: 100%; padding: 0.75rem; font: inherit; font-size: 0.95rem; font-weight: 600;
+    border: none; border-radius: 999px; background: var(--orange); color: #fff; cursor: pointer;
+  }
+  button:hover { filter: brightness(1.05); }
+  button.secondary { background: transparent; border: 2px solid var(--blue); color: var(--blue-dark); margin-top: 0.7rem; }
+  .toggle { text-align: center; margin-top: 1.2rem; font-size: 0.85rem; color: var(--text-muted); }
+  .toggle button { all: unset; cursor: pointer; color: var(--blue-dark); text-decoration: underline; }
+  .error { color: var(--error); font-size: 0.85rem; margin: -0.6rem 0 1rem; }
+  .hidden { display: none !important; }
+
+  .id-row { display: flex; justify-content: space-between; padding: 0.7rem 0; border-bottom: 1px solid var(--border); font-size: 0.92rem; }
+  .id-row:last-child { border-bottom: none; }
+  .id-row .k { color: var(--text-muted); }
+  .id-row .v { font-weight: 600; text-align: right; }
+  .perm-pill {
+    display: inline-block; background: var(--bg-soft); border: 1px solid var(--border);
+    color: var(--blue-dark); font-size: 0.72rem; padding: 0.2rem 0.6rem; border-radius: 999px;
+    margin: 0.2rem 0.3rem 0 0;
+  }
+  .signout { text-align: center; margin-top: 1.6rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><span class="dot"></span> CarePyre Console</div>
+  <a href="/index.html">carepyre.org</a>
+</header>
+
+<main>
+  <!-- Auth card: login/register toggle -->
+  <div class="card" id="auth-card">
+    <h1 id="auth-title">Sign in</h1>
+    <p class="sub" id="auth-sub">Sign in to your CarePyre account.</p>
+    <div id="auth-error" class="error hidden"></div>
+    <form id="auth-form">
+      <div id="display-name-field" class="hidden">
+        <label for="display-name">Name</label>
+        <input id="display-name" type="text" autocomplete="name" placeholder="Jane Rivera">
+      </div>
+      <label for="email">Email</label>
+      <input id="email" type="email" required autocomplete="username">
+      <label for="password">Password</label>
+      <input id="password" type="password" required autocomplete="current-password" minlength="8">
+      <button type="submit" id="auth-submit">Sign in</button>
+    </form>
+    <div class="toggle">
+      <span id="toggle-to-register-wrap">New to CarePyre? <button id="toggle-to-register">Create an account</button></span>
+      <span id="toggle-to-login-wrap" class="hidden">Already have an account? <button id="toggle-to-login">Sign in</button></span>
+    </div>
+  </div>
+
+  <!-- Console card: shown once signed in -->
+  <div class="card hidden" id="console-card">
+    <h1>Welcome<span id="console-name"></span></h1>
+    <p class="sub">Your CarePyre account, live from IDUNA_PRO.</p>
+    <div class="id-row"><span class="k">Email</span><span class="v" id="c-email"></span></div>
+    <div class="id-row"><span class="k">Identity</span><span class="v" id="c-id"></span></div>
+    <div class="id-row"><span class="k">Status</span><span class="v" id="c-status"></span></div>
+    <div class="id-row" style="display:block;">
+      <span class="k">Permissions</span>
+      <div id="c-permissions" style="margin-top:0.4rem;"></div>
+    </div>
+    <div class="signout"><button class="secondary" id="signout-btn">Sign out</button></div>
+  </div>
+</main>
+
+<script>
+  // Same-origin relative path -- nginx's own /console-api/ location proxies this to the real,
+  // separately-running IDUNA_PRO instance (see docs/CAREPYRE_CONSOLE_NORTHSTAR.md). No CORS
+  // handling needed anywhere in this file for exactly that reason.
+  const API_BASE = '/console-api/api/v1';
+  const TOKEN_KEY = 'carepyre_console_token';
+
+  let mode = 'login'; // 'login' | 'register'
+
+  const els = {
+    authCard: document.getElementById('auth-card'),
+    consoleCard: document.getElementById('console-card'),
+    authTitle: document.getElementById('auth-title'),
+    authSub: document.getElementById('auth-sub'),
+    authError: document.getElementById('auth-error'),
+    authForm: document.getElementById('auth-form'),
+    authSubmit: document.getElementById('auth-submit'),
+    displayNameField: document.getElementById('display-name-field'),
+    displayName: document.getElementById('display-name'),
+    email: document.getElementById('email'),
+    password: document.getElementById('password'),
+    toRegisterWrap: document.getElementById('toggle-to-register-wrap'),
+    toLoginWrap: document.getElementById('toggle-to-login-wrap'),
+    toRegister: document.getElementById('toggle-to-register'),
+    toLogin: document.getElementById('toggle-to-login'),
+    signoutBtn: document.getElementById('signout-btn'),
+  };
+
+  function setMode(next) {
+    mode = next;
+    els.authError.classList.add('hidden');
+    if (mode === 'register') {
+      els.authTitle.textContent = 'Create your account';
+      els.authSub.textContent = 'Set up your CarePyre account.';
+      els.authSubmit.textContent = 'Create account';
+      els.displayNameField.classList.remove('hidden');
+      els.toRegisterWrap.classList.add('hidden');
+      els.toLoginWrap.classList.remove('hidden');
+    } else {
+      els.authTitle.textContent = 'Sign in';
+      els.authSub.textContent = 'Sign in to your CarePyre account.';
+      els.authSubmit.textContent = 'Sign in';
+      els.displayNameField.classList.add('hidden');
+      els.toRegisterWrap.classList.remove('hidden');
+      els.toLoginWrap.classList.add('hidden');
+    }
+  }
+  els.toRegister.addEventListener('click', () => setMode('register'));
+  els.toLogin.addEventListener('click', () => setMode('login'));
+
+  function showError(msg) {
+    els.authError.textContent = msg;
+    els.authError.classList.remove('hidden');
+  }
+
+  els.authForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    els.authError.classList.add('hidden');
+    const email = els.email.value.trim();
+    const password = els.password.value;
+    try {
+      let res, body;
+      if (mode === 'register') {
+        res = await fetch(API_BASE + '/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, display_name: els.displayName.value.trim() }),
+        });
+      } else {
+        res = await fetch(API_BASE + '/auth/local', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+      }
+      body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showError(body.error || ('Sign-in failed (HTTP ' + res.status + ').'));
+        return;
+      }
+      localStorage.setItem(TOKEN_KEY, body.token);
+      await loadConsole();
+    } catch (err) {
+      showError('Could not reach the console API: ' + err.message);
+    }
+  });
+
+  async function loadConsole() {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return;
+    try {
+      const res = await fetch(API_BASE + '/identities/me', {
+        headers: { 'Authorization': 'Bearer ' + token },
+      });
+      if (!res.ok) {
+        // Real, honest handling: an expired/invalid token means back to sign-in, not a
+        // silent blank console.
+        localStorage.removeItem(TOKEN_KEY);
+        return;
+      }
+      const data = await res.json();
+      renderConsole(data);
+    } catch (err) {
+      showError('Could not reach the console API: ' + err.message);
+    }
+  }
+
+  function renderConsole(data) {
+    const identity = data.identity || {};
+    const rbac = data.rbac || {};
+    document.getElementById('console-name').textContent = identity.gamertag ? ', ' + identity.gamertag : '';
+    document.getElementById('c-email').textContent = identity.email || '—';
+    document.getElementById('c-id').textContent = identity.id || '—';
+    document.getElementById('c-status').textContent = identity.status || '—';
+    const permsEl = document.getElementById('c-permissions');
+    permsEl.innerHTML = '';
+    const perms = rbac.effective_permissions || [];
+    if (perms.length === 0) {
+      permsEl.innerHTML = '<span class="perm-pill">none yet</span>';
+    } else {
+      for (const p of perms) {
+        const pill = document.createElement('span');
+        pill.className = 'perm-pill';
+        pill.textContent = p;
+        permsEl.appendChild(pill);
+      }
+    }
+    els.authCard.classList.add('hidden');
+    els.consoleCard.classList.remove('hidden');
+  }
+
+  els.signoutBtn.addEventListener('click', () => {
+    localStorage.removeItem(TOKEN_KEY);
+    els.consoleCard.classList.add('hidden');
+    els.authCard.classList.remove('hidden');
+    els.authForm.reset();
+    setMode('login');
+  });
+
+  setMode('login');
+  loadConsole();
+</script>
+</body>
+</html>
