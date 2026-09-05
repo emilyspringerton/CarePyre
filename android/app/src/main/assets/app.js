@@ -101,6 +101,66 @@ function saveConfig(evt) {
   setTimeout(() => { status.textContent = ''; }, 2500);
 }
 
+// startQrScan / onQrScanned / applySipUri -- CAREPYRE-42143124's own "qr code scan feature to
+// configure" ask. Real, minimal JS<->native bridge: startQrScan() hands off to
+// MainActivity.startQrScan() (a real @JavascriptInterface method, see MainActivity.java's own
+// header comment on why a JS interface rather than exposing zxing directly to the WebView),
+// which launches the real zxing-android-embedded CaptureActivity and calls back into
+// onQrScanned() (via evaluateJavascript, invoked from Java, not from this file) once a real
+// code is decoded. applySipUri() is shared with the OTHER real entry point this same feature
+// request named ("just camera and it switches to carepyre sip") -- MainActivity's own
+// onCreate()/onNewIntent() call it directly when the app is launched via a scanned sip: link
+// from the stock Camera app, not just from this in-app button.
+function startQrScan() {
+  if (typeof Android !== 'undefined' && Android.scanQr) {
+    Android.scanQr();
+  } else {
+    // Real, honest fallback for iterating this UI outside a real Android WebView (e.g. a plain
+    // desktop browser during development) -- no native bridge exists there to call.
+    window.alert('QR scanning needs the native Android app -- no camera bridge available here.');
+  }
+}
+
+// applySipUri -- real, minimal parse of the plain sip:<ext>@<server>[:<port>] URI the console's
+// own already-shipped QR encodes (console.html's renderSipQR(), CP-SIP-1243445) -- a real,
+// standard RFC 3261 URI, not a bespoke scheme, so any real SIP client's own "scan to configure"
+// feature (this one included) already knows how to read it. Deliberately does NOT touch
+// cfg-password -- the console's own QR never encodes one (sip_accounts.go's own header comment:
+// the real PJSIP secret lives only in Asterisk's config, never in this DB), so the user always
+// enters that field by hand regardless of which path filled in everything else.
+function applySipUri(sipUri) {
+  if (!sipUri || sipUri.indexOf('sip:') !== 0) {
+    document.getElementById('save-status').textContent = 'Scanned code was not a real sip: URI.';
+    document.getElementById('save-status').style.color = '#E5484D';
+    return;
+  }
+  const rest = sipUri.slice(4); // strip "sip:"
+  const at = rest.indexOf('@');
+  const extension = at >= 0 ? rest.slice(0, at) : '';
+  const hostPart = at >= 0 ? rest.slice(at + 1) : rest;
+  const colon = hostPart.indexOf(':');
+  const server = colon >= 0 ? hostPart.slice(0, colon) : hostPart;
+  const port = colon >= 0 ? hostPart.slice(colon + 1) : '5060';
+
+  document.getElementById('cfg-sip-uri').value = sipUri;
+  if (server) document.getElementById('cfg-server').value = server;
+  if (port) document.getElementById('cfg-port').value = port;
+  if (extension) document.getElementById('cfg-display-name').value =
+    document.getElementById('cfg-display-name').value || extension;
+
+  showScreen('config');
+  const status = document.getElementById('save-status');
+  status.style.color = '';
+  status.textContent = 'Filled in from scanned QR -- enter your password, then Save.';
+}
+
+// onQrScanned -- called FROM Java (MainActivity's own onActivityResult, after a real
+// zxing-android-embedded decode). Kept as a real, separate, globally-reachable function (not
+// folded into startQrScan) since Java calls it directly by name via evaluateJavascript.
+function onQrScanned(sipUri) {
+  applySipUri(sipUri);
+}
+
 function loadConfig() {
   try {
     const raw = localStorage.getItem('carepyre_sip_config');

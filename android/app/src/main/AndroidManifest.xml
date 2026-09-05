@@ -1,6 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- CAMERA: CAREPYRE-42143124's own "camera and it switches to carepyre sip / in-app QR
+         scan feature" ask; needed both for zxing-android-embedded's in-app scanner (Config
+         screen's own "Scan QR" button) and implicitly by the stock Camera app path below (the
+         OS's own camera/QR recognizer needs no permission grant from THIS app to scan; only
+         this app's own in-app scanner does). -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- required="false": this app's core dial/answer/config flows don't need a camera, only
+         the QR onboarding convenience does; a real device with no camera should still be able
+         to install and use it, just without that one shortcut. -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
     <application
         android:allowBackup="true"
         android:label="@string/app_name"
@@ -13,7 +24,34 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- CAREPYRE-42143124: "just camera and it switches to carepyre sip"; a stock
+                 Camera app's own QR recognizer offers any app registered for a scanned URI's
+                 scheme as an "open with" choice. The console's own already-shipped QR
+                 (console.html's renderSipQR()) encodes a plain sip URI (extension, at-sign,
+                 server, colon, port; CP-SIP-1243445); this intent-filter is the real, matching
+                 receiver side: a real android.intent.action.VIEW for scheme "sip", plus the
+                 Browsable category so it's reachable from outside this app (a scanned link, not
+                 just internal navigation). android:autoVerify is deliberately NOT set; that's
+                 for https App Links needing a server-side well-known verification file, and a
+                 custom non-http scheme like sip has no such mechanism and doesn't need one, the
+                 OS always offers a disambiguation chooser for a non-http scheme with multiple
+                 handlers regardless. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="sip" />
+            </intent-filter>
         </activity>
+
+        <!-- zxing-android-embedded's own CaptureActivity (the real in-app scanner screen
+             IntentIntegrator launches for the Config screen's "Scan QR" button) is NOT declared
+             here; the library's own AAR bundles that activity in its own manifest, and Gradle's
+             manifest merger includes it automatically. Declaring it again by hand risks a real
+             merge conflict if this file's own guessed attribute values (theme, orientation)
+             don't exactly match the library's real internal ones; the library's own manifest is
+             the single source of truth for its own activity, not duplicated here. -->
 
     </application>
 

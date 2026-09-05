@@ -131,6 +131,14 @@
     margin-top: 0.6rem; background: var(--orange); color: #fff; border: none; border-radius: 999px;
     font-family: inherit; font-weight: 600; font-size: 0.95rem; padding: 0.8rem; cursor: pointer;
   }
+  /* .scan-btn: real, deliberate outline style (not solid) -- a secondary action next to Save's
+     own primary solid orange, same real "one obvious primary action per screen" convention the
+     STYLE_GUIDE.md palette already implies elsewhere in this file. */
+  .scan-btn {
+    margin-top: 0.6rem; background: transparent; color: var(--blue-dark); border: 1.5px solid var(--blue);
+    border-radius: 999px; font-family: inherit; font-weight: 600; font-size: 0.95rem; padding: 0.8rem;
+    cursor: pointer;
+  }
   .save-status { text-align: center; font-size: 0.78rem; color: var(--accept); min-height: 1.2em; margin-top: 0.5rem; }
 </style>
 </head>
@@ -209,6 +217,12 @@
         <label for="cfg-password">Password</label>
         <input id="cfg-password" type="password" placeholder="••••••••">
       </div>
+      <!-- CAREPYRE-42143124: "in the actual carepyre sip it needs qr code scan feature to
+           configure" -- scans the console's own already-shipped sip: URI QR (console.html's
+           renderSipQR(), CP-SIP-1243445) and auto-fills SIP URI/server/port above. type="button"
+           so it never triggers this form's own submit/saveConfig -- scanning only fills fields,
+           the user still presses Save deliberately afterward. -->
+      <button class="scan-btn" type="button" onclick="startQrScan()">Scan QR to configure</button>
       <button class="save-btn" type="submit">Save</button>
       <div class="save-status" id="save-status"></div>
     </form>
