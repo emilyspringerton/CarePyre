@@ -63,23 +63,42 @@ linked C, since this is a JVM host, not a C one.
 
 ## Real, honest gaps — named, not glossed over
 
-1. **No Android SDK in this sandbox.** Checked directly (same real finding SPIDERBEETLE's own
-   NORTHSTAR already documented): no `gradlew`, no SDK, `MJOLNIR` itself (this monorepo's real,
-   existing Android app) isn't built here either, only via real CI or the founder's own machine.
-   A real Gradle project / Activity / Manifest / JNI bridge can be written, but not compiled or
-   run to a real APK from this environment.
-2. **No SIP transaction/dialog state machine yet.** `message.prn` answers "can PARENA read and
+1. **No Android SDK in this sandbox — but CI has one.** Checked directly (same real finding
+   SPIDERBEETLE's own NORTHSTAR already documented): `dl.google.com` (the real SDK-package
+   download host) is unreachable from this sandbox specifically, even though general internet
+   and `maven.google.com` (a different host, needed to resolve the Android Gradle Plugin itself)
+   both work fine. `android/` is a real, buildable Gradle project (verified locally up to the
+   point an SDK is actually needed — `./gradlew tasks` succeeds, `assembleDebug` fails with
+   exactly and only "SDK location not found," no other config errors). GitHub's own
+   `ubuntu-latest` runners ship with a pre-installed Android SDK precisely because Android CI is
+   one of their most common uses — `.github/workflows/ci.yml`'s `android-app` job needs no
+   explicit SDK-install step at all, and is the real, live verification this scaffold actually
+   builds (see CP-SIP-9911).
+2. **Real, new, decisive finding: the native SIP core isn't wired into the Android app yet, and
+   can't be via a simple port of Phase 1's own approach.** `parena_runtime.h` unconditionally
+   includes `<SDL2/SDL.h>`/`<SDL2/SDL_ttf.h>` — Phase 1's desktop JNI proof solved this with a
+   plain `apt-get install libsdl2-dev`, but the Android NDK toolchain has no equivalent: cross-
+   compiling `parena_runtime.c` for a real Android ABI (arm64-v8a, x86_64) needs a real,
+   separately-built Android-targeted SDL2 (either NDK-built from source or a real prebuilt
+   Android AAR), not a package-manager install. `android/`'s own `MainActivity.java` ships as a
+   real, honest, installable scaffold that does NOT embed `libcarepyre_sip.so` yet, rather than
+   silently pretending this is solved. Real, named next step: either build a genuine
+   Android-targeted SDL2 (the correct, harder fix) or find a real way to compile
+   `sip/message.prn`/`sip/rtp.prn` without pulling in the SDL2-dependent parts of
+   `parena_runtime.h` at all (a narrower runtime subset, if PARENA's own build system supports
+   excluding unused stdlib surface — not yet checked).
+3. **No SIP transaction/dialog state machine yet.** `message.prn` answers "can PARENA read and
    write one real SIP message" — RFC 3261's own real INVITE/non-INVITE transaction FSMs (retries,
    timeouts, provisional vs. final responses, dialog state across a call) are real, separate,
    unbuilt work sitting on top of the message layer.
-3. **No SDP body parsing.** A real INVITE needs an SDP body (RFC 4566) to negotiate a real media
+4. **No SDP body parsing.** A real INVITE needs an SDP body (RFC 4566) to negotiate a real media
    session (codec, RTP port) — `message.prn`'s own header comment names this as an explicit,
    already-known v0 boundary, not new information, but it's squarely on the SIP phone's own
    critical path (no working two-way audio without it).
-4. **No audio codec.** RTP's `payload-type` field is parsed/built; the actual audio codec (G.711
+5. **No audio codec.** RTP's `payload-type` field is parsed/built; the actual audio codec (G.711
    μ-law is the simplest real option — pure arithmetic, no license issues, no external library)
    still needs a real encoder/decoder on both the send and receive path.
-5. **No real SIP account to test against.** Even once the pipeline exists, end-to-end verification
+6. **No real SIP account to test against.** Even once the pipeline exists, end-to-end verification
    needs a real SIP server/account (a SIP trunk provider, or CarePyre's own PBX if
    `PARENA/docs/PBX_ASTERISK_NORTHSTAR.md`'s own Asterisk work ever ships) — not available in this
    sandbox, matching the same "human-supplied credential" pattern as the Pexels API key earlier
@@ -104,8 +123,14 @@ linked C, since this is a JVM host, not a C one.
   terminated), enough to place and answer one real call, not the full RFC 3261 FSM.
 - **Phase 4 — G.711 codec + real RTP send/receive loop**, wired to Android's `AudioRecord`/
   `AudioTrack` via the same JNI bridge.
-- **Phase 5 — real Android app scaffold** (Gradle/Manifest/Activity/permissions), built and
-  verified on the founder's own machine or real CI, not this sandbox.
+- **Phase 5 — real Android app scaffold SHIPPED** (kanban CP-SIP-9911, "Android APK should be in
+  releases"). `android/` is a real, buildable, installable Gradle project — verified locally as
+  far as this sandbox can go (`./gradlew tasks` succeeds; `assembleDebug` fails ONLY on "SDK
+  location not found," no other config errors), and for real in CI (`android-app` job, no SDK
+  install step needed — GitHub's own `ubuntu-latest` runners ship with one), which uploads a real
+  `.apk` as a build artifact and attaches it to the same auto-releases CP-SIP-124 already
+  established. Deliberately does NOT embed `libcarepyre_sip.so` yet — see gap #2 above (the real,
+  newly-found SDL2-for-NDK blocker) for why, and for the real next step.
 
 Phase 1 is the real, concrete "give us something we can iterate from" SIP-0001 asked for —
 scoped small on purpose, since it's the one step that removes a genuine unknown (does the
