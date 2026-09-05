@@ -1,5 +1,27 @@
 ## 2026-09-05
 
+- feat: SIP phone Phase 6 (kanban CP-SIP-CONTINUE-123/CP-SIP-CONTINUE/CP-SIP-124455/CP-SIP-24332)
+  — real WebView UI shipped. **Architecture decision** (resolves CP-SIP-CONTINUE's own "WE MAY
+  NEED TO USE WEB TECHNOLOGIES FOR THE INTERFACE" question): a local, bundled HTML/CSS/JS UI
+  (`android/app/src/main/assets/`) rendered via a plain `android.webkit.WebView` pointed at
+  `file:///android_asset/index.html` — not PARENA's own UI surface, which has no proven Android
+  target today (the same SDL2/NDK gap already blocking the native SIP core). Reuses MJOLNIR's
+  own already-established WebView-in-a-native-Activity pattern, pointed at a local page instead
+  of a remote URL for fast, no-network iteration. **Three real, working screens** (CP-SIP-124455)
+  as one single-page app: Dial (12-key keypad with letter subtext, running number display, call/
+  backspace, a clearly demo-labeled "simulate incoming call" control), Incoming Call (caller
+  placeholder, round accept/decline), Config (SIP account fields — display name, URI, server,
+  port, transport, password — saved to `localStorage` on-device only, password deliberately
+  excluded pending real secure storage). **JetBrains Mono** (CP-SIP-CONTINUE-123's own ask, SIL
+  OFL-licensed) bundled locally as real `.woff2` files plus the real license text, not loaded
+  from a CDN — matches this repo's offline-first spirit. Real, honest scope: no SIP signaling is
+  wired in yet — `placeCall`/`acceptCall`/`endCall`/`saveConfig` are named, real hand-off points
+  for the native JNI bridge, not stand-ins for it. A real Claude Design canvas of the same three
+  screens (CP-SIP-24332, "make it look nice") was published for founder visual review:
+  https://claude.ai/code/artifact/935808bf-007d-4ab2-a03a-1b2e3cee1241. `./gradlew tasks`
+  succeeds; `assembleDebug` fails only on the pre-existing "SDK location not found" gap. Apple
+  #17910.
+
 - build: CP-OPS-1244 ("CP SIP PHONE SHOULD USE BAZEL") — `native/sip-jni-proof/` now builds
   hermetically under Bazel 9.2.0. `MODULE.bazel`/`.bazelrc`/`.bazelversion` added, matching
   PARENA's own established `rules_cc` cc_library layout; `native/sip-jni-proof/BUILD.bazel`
