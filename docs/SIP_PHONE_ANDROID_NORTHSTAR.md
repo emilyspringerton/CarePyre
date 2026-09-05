@@ -288,6 +288,75 @@ Phase 1 is the real, concrete "give us something we can iterate from" SIP-0001 a
 scoped small on purpose, since it's the one step that removes a genuine unknown (does the
 PARENA→C→.so→JNI chain actually work) rather than adding more code on an unproven foundation.
 
+## Phase 2: real INVITE/ACK/BYE call setup, RTP audio, and DTMF (2026-09-05, "build the sip phone pls")
+
+Founder direction after Phase 1 landed real REGISTER: "why does it still say that the call is
+simulated? do we have a full sip phone? if so disable the warnings" — answered honestly at the
+time (no, it wasn't a full phone yet, so the warnings stayed), then directly followed by "build
+the sip phone pls". This phase closes that gap: real call setup, real two-way audio, and real
+DTMF now exist, all as plain Java (not the PARENA→JNI path Phase 1 speculated about) — `sip/
+sdp.prn`, `sip/dtmf.prn`, `sip/g711.prn` stay shipped and independently verified in PARENA's own
+stdlib, but this client reimplements the same protocol logic directly in Java rather than
+bridging through JNI, since Android's own `AudioRecord`/`AudioTrack`/`DatagramSocket` APIs are
+Java-native and a JNI round-trip per RTP packet (every 20ms) would add real, avoidable latency
+and complexity for no benefit here.
+
+New files: `G711.java` (μ-law/A-law codec, verified against the same 10 hand-derived reference
+values already proven correct in `sip/g711.prn`), `RtpPacket.java` (12-byte RTP header
+encode/decode), `Sdp.java` (offer/answer build+parse), `Dtmf.java` (RFC 4733 telephone-event
+encode/decode), `AudioCallSession.java` (the real RTP send/receive loop: `AudioRecord` mic input
+→ G.711 encode → RTP send, RTP receive → G.711 decode → `AudioTrack` playback, 8kHz mono, 160
+samples/20ms packets; `sendDtmf()` sends 3 non-end + 3 end-marked packets per RFC 4733's own
+redundancy recommendation).
+
+`SipClient.java` rewritten from register-only to a persistent UAC/UAS: the socket now stays open
+after a successful REGISTER (previously closed every time) so it can send/receive INVITE, ACK,
+BYE, CANCEL, and OPTIONS on the same transport; a `receiveLoop()` thread dispatches responses by
+CSeq via a `LinkedBlockingQueue` and handles unsolicited incoming requests directly.
+
+Three real bugs found during code review (not by a build or live-test failure) and fixed before
+shipping:
+- `fromTag`/`toTag` were named header-relative, which is only correct when this client is the
+  caller — as callee, "From" is the remote party and "To" is us, so the original naming would
+  send a malformed BYE tag pair on any inbound call. Renamed to `localTag`/`remoteTag`
+  (role-relative) and every call site fixed.
+- `reject()` only updated local UI state and never sent a real SIP response at all — a rejected
+  caller's phone would have kept ringing forever. Now sends a real `603 Decline`.
+- `remoteUri` was set from the raw `From`/`To` header text (display name + tag included) instead
+  of the bare URI inside it — would have broken `hangup()`'s own BYE request-line for an
+  incoming-call-then-hangup. Added `extractUri()`.
+
+`MainActivity.java`'s `SipBridge` gained `call()`, `answerCall()`, `rejectCall()`,
+`hangupCall()`, `sendDtmf()`, each delegating to the one persistent `SipClient` instance kept
+alive across the app's lifetime once `register()` succeeds. `AndroidManifest.xml` gained
+`RECORD_AUDIO` (real, dangerous-permission requirement for the new audio path, requested at
+runtime too) and `INTERNET` — a real, previously-undiscovered gap: every network operation this
+app has ever done needed it, and it was never declared, since a `WebView` loading local
+`file://` assets doesn't itself require it.
+
+`index.html`/`app.js`: `placeCall()`/`acceptCall()`/`rejectCall()`/`endCall()` now call the real
+`Android.*` bridge methods instead of the old demo UI transitions; `onCallRinging()`/
+`onCallEstablished()`/`onCallEnded()`/`onIncomingCall()` added as the real callback surface Java
+invokes back via `evaluateJavascript`; the obsolete "Simulate incoming call" demo button and its
+`simulateIncomingCall()` function are gone; a real in-call DTMF keypad (`#in-call-keypad`) wired
+to `Android.sendDtmf()` was added to the established-call state.
+
+Verified: `SipClient.java` compiles clean against a stub `AudioCallSession` (confirms full
+type-correctness of the signaling logic; `AudioCallSession.java` itself can't be compiled or
+tested in this sandbox — no Android SDK, only a plain JDK — so it's verified by careful manual
+API review against well-established `android.media`/`android.net` usage only, not by a real
+build). CI (GitHub Actions) green on the real Gradle build; shipped as CarePyre v0.23.0 (Apple
+#18002, CarePyre commits `b600abd`/`d4bf2b2`).
+
+Real, honest, not-yet-closed gap: after this phase's own code was written, Asterisk's SIP
+transport (port 5060/udp) stopped listening entirely — confirmed via `ss -uln` against both the
+public IP and loopback, process still running per `pgrep`, but no chan_sip or chan_pjsip UDP
+transport bound. This is a new, separate issue from the chan_sip/chan_pjsip conflict Phase 1
+already fixed (`sudo-queue/57`); `sudo-queue/58-diagnose-asterisk-sip-transport-down.sh` is
+written to find the real root cause but has not yet been run by the founder. Until it is, this
+phase's own INVITE/RTP/DTMF code has not been live-verified against production — only compiled
+and reviewed.
+
 ## Related
 
 - `PARENA/docs/SIP_TWILIO_GATEWAY_NORTHSTAR.md`, `PARENA/docs/PBX_ASTERISK_NORTHSTAR.md` — the
