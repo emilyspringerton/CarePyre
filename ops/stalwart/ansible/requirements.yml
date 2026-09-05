@@ -1,5 +1,6 @@
 ---
-# community.general provides the ufw module the playbook uses.
+# community.general provides the ufw/timezone modules; ansible.posix provides authorized_key.
 # Install with: ansible-galaxy collection install -r requirements.yml
 collections:
   - name: community.general
+  - name: ansible.posix

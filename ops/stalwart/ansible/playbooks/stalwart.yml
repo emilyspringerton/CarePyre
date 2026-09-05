@@ -23,6 +23,15 @@
 # "checked live, not assumed" discipline says not to fake). This playbook gets the box to "log in
 # once and click through the wizard" — not further — and names that as the real, remaining step.
 #
+# CORRECTION, live-observed 2026-09-05 (v0.16.20): the doc excerpt this playbook was originally
+# built from claimed bootstrap mode opens ONLY port 8080 with "no mail protocols active" -- the
+# real, running box contradicts that. Once config.json exists (the sqlite DataStore object
+# above), Stalwart already binds a full default listener set on first boot: 25 (SMTP), 443
+# (HTTPS/admin), 465 (SMTPS submission -- NOT 587/STARTTLS, a real, notable default choice), 993
+# (IMAPS), 995 (POP3S), 4190 (ManageSieve), and 8080 (setup wizard). The wizard is for
+# hostname/domain/ACME/DKIM/DNS-provider configuration, not for bringing listeners up in the
+# first place. Real, honest, live evidence overrides the earlier doc summary here, not the other
+# way around.
 # Usage:
 #   ansible-playbook -i inventory.ini playbooks/stalwart.yml
 
@@ -62,11 +71,21 @@
         # Real, current TLS pin the installer itself enforces (--proto '=https' --tlsv1.2) --
         # mirrored here so a downgraded/mitm'd fetch fails loudly instead of silently succeeding.
         force: true
+      when: not stalwart_binary.stat.exists
 
-    - name: Run the official installer (idempotent -- safe to re-run, preserves existing env file)
+    # Real bug found and fixed live on 2026-09-05: running this playbook a second time (with
+    # Stalwart already installed and its systemd service actively running) made the official
+    # installer's own `cp` fail with "Text file busy" -- `cp` overwrites a target file in place,
+    # which the kernel refuses while that exact binary is the running process's own executable.
+    # This is a real, upstream install.sh limitation (not something to patch in their script) --
+    # the correct fix here is to only run the installer on first install; a real version upgrade
+    # is a deliberate, separate operation (stop the service, run the installer, start it again),
+    # not something to implicitly attempt on every idempotent playbook run.
+    - name: Run the official installer (first install only -- see the note above on upgrades)
       ansible.builtin.command:
         cmd: sh /tmp/stalwart-install.sh
       register: stalwart_install
+      when: not stalwart_binary.stat.exists
       changed_when: "'Installation complete' in stalwart_install.stdout"
 
     - name: Ensure the config directory exists with correct ownership before writing config.json
@@ -88,15 +107,22 @@
         owner: stalwart
         group: stalwart
         mode: "0640"
-        # Real, verified schema (stalw.art/docs/ref/object/data-store, checked live 2026-09-05):
         # this is the ONLY thing config.json holds -- everything else (listeners, TLS, DKIM,
         # DNS-provider auto-publish) lives in Stalwart's own datastore, set via the admin UI/CLI,
         # not this file. Writing this now means Stalwart boots straight into "needs the one-time
         # setup wizard" instead of full interactive bootstrap-from-nothing mode.
+        #
+        # Real bug found and fixed live on 2026-09-05: "path" must be an actual FILE path, not a
+        # bare directory -- pointing it at {{ stalwart_data_dir }} alone crash-looped the service
+        # with "unable to open database file: /var/lib/stalwart" (SQLite's own real error when
+        # handed a directory instead of a file). The doc summary this was originally built from
+        # showed a trailing-slash directory in its own example; that didn't hold up against the
+        # real running binary, so the live, observed behavior is the source of truth here, not
+        # the doc excerpt.
         content: |
           {
             "@type": "Sqlite",
-            "path": "{{ stalwart_data_dir }}"
+            "path": "{{ stalwart_data_dir }}/stalwart.db"
           }
       when: not stalwart_config.stat.exists
 
@@ -115,13 +141,18 @@
       when: not stalwart_config.stat.exists
       notify: restart stalwart
 
+    # Port 22 is deliberately NOT touched here -- harden.yml already owns it with a real,
+    # rate-limited `ufw limit` rule (brute-force mitigation). A real bug found and fixed live on
+    # 2026-09-05: this task originally included "22" in this plain-`allow` loop, which silently
+    # replaced harden.yml's own rate-limited rule with an unlimited one (confirmed via `ufw
+    # status numbered` showing a bare ALLOW instead of LIMIT for port 22 after this playbook ran)
+    # -- restored on the live box and removed here so a future re-run can't regress it again.
     - name: Open the firewall for real mail + admin ports
       community.general.ufw:
         rule: allow
         port: "{{ item }}"
         proto: tcp
       loop:
-        - "22"   # SSH -- never lock yourself out
         - "25"   # SMTP
         - "587"  # Submission
         - "993"  # IMAPS

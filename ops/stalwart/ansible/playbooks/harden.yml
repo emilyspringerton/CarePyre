@@ -1,0 +1,161 @@
+---
+# harden.yml -- real, standard, idempotent security baseline for the new Stalwart Linode
+# (45.79.143.216, Ubuntu 24.04.4 LTS). Founder, real-time: "do the usual security hardening etc
+# but do it all with ansible please." Must run BEFORE stalwart.yml, and BEFORE this box is
+# reachable from the open internet for real mail traffic.
+#
+# Real, standard baseline -- nothing custom or exotic, the same handful of steps any real Ubuntu
+# server hardening guide recommends:
+#   1. Full package update (a fresh image is rarely fully patched at boot).
+#   2. A real, non-root sudo user (`deploy`), same SSH key already authorized for root.
+#   3. sshd hardened: root login disabled, password auth disabled (key-only), empty passwords
+#      disabled -- done LAST and only after the deploy user's own key access is verified in the
+#      same play, so a mistake here can't lock this box out permanently.
+#   4. UFW: default-deny incoming, SSH allowed (rate-limited against brute force). Stalwart's own
+#      mail ports get added later by stalwart.yml, not here -- this playbook doesn't know or care
+#      what services will run on the box.
+#   5. fail2ban watching sshd, real, standard brute-force mitigation.
+#   6. unattended-upgrades for automatic security patches -- a public-facing mail server is a
+#      real, standing target; this is not optional hardening for this box.
+#   7. UTC timezone (avoids log-timestamp confusion across this monorepo's other boxes, which
+#      all run UTC).
+#
+# After this runs, all FUTURE playbook runs (including stalwart.yml) target the `deploy` user,
+# not root -- update inventory.ini's ansible_user accordingly (see this repo's own
+# inventory.ini.example).
+#
+# Usage (run once, as root, before root login is disabled):
+#   ansible-playbook -i inventory.ini -u root playbooks/harden.yml
+
+- name: Harden a fresh Ubuntu box before it does anything else
+  hosts: stalwart
+  become: true
+
+  vars:
+    deploy_user: deploy
+    # Real, existing session key -- the same one already authorized for root during Linode
+    # provisioning. Reused, not a new keypair, so nothing else needs to change.
+    deploy_ssh_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN6VCABNbwK6DM8HOreqn/r2U7UU2i1osNmYRB8T7FwU emilyspringerton@gmail.com"
+
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Full package upgrade (a fresh image is rarely fully patched at boot)
+      ansible.builtin.apt:
+        upgrade: dist
+
+    - name: Set timezone to UTC
+      community.general.timezone:
+        name: UTC
+
+    - name: Create the real, non-root sudo deploy user
+      ansible.builtin.user:
+        name: "{{ deploy_user }}"
+        shell: /bin/bash
+        groups: sudo
+        append: true
+        create_home: true
+
+    - name: Passwordless sudo for the deploy user (matches every other box in this monorepo's own convention -- Ansible/CI runs unattended)
+      ansible.builtin.copy:
+        dest: "/etc/sudoers.d/{{ deploy_user }}"
+        content: "{{ deploy_user }} ALL=(ALL) NOPASSWD:ALL\n"
+        owner: root
+        group: root
+        mode: "0440"
+        validate: "visudo -cf %s"
+
+    - name: Authorize this session's SSH key for the deploy user
+      ansible.posix.authorized_key:
+        user: "{{ deploy_user }}"
+        key: "{{ deploy_ssh_public_key }}"
+        state: present
+
+    - name: Verify the deploy user's own SSH access actually works BEFORE touching sshd_config
+      ansible.builtin.command:
+        cmd: >-
+          ssh -o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new
+          {{ deploy_user }}@{{ ansible_host | default(inventory_hostname) }} whoami
+      delegate_to: localhost
+      become: false
+      ignore_errors: true
+      register: deploy_ssh_check
+      changed_when: false
+
+    - name: Fail loudly if the deploy user's SSH access isn't confirmed -- do NOT disable root login blind
+      ansible.builtin.fail:
+        msg: >-
+          Refusing to harden sshd: could not confirm SSH access as {{ deploy_user }} yet.
+          Re-run this playbook once that's verified manually -- disabling root/password login
+          before confirming an alternate path in would risk locking this box out permanently.
+      when: deploy_ssh_check is failed
+
+    - name: Install security packages (ufw, fail2ban, unattended-upgrades)
+      ansible.builtin.apt:
+        name:
+          - ufw
+          - fail2ban
+          - unattended-upgrades
+        state: present
+
+    - name: Enable automatic security updates
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/20auto-upgrades
+        content: |
+          APT::Periodic::Update-Package-Lists "1";
+          APT::Periodic::Unattended-Upgrade "1";
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Ensure unattended-upgrades is enabled and running
+      ansible.builtin.systemd:
+        name: unattended-upgrades
+        enabled: true
+        state: started
+
+    - name: Ensure fail2ban is enabled and running (real, standard default sshd jail, no custom config needed)
+      ansible.builtin.systemd:
+        name: fail2ban
+        enabled: true
+        state: started
+
+    - name: UFW default policy -- deny incoming, allow outgoing
+      community.general.ufw:
+        direction: "{{ item.direction }}"
+        policy: "{{ item.policy }}"
+      loop:
+        - { direction: incoming, policy: deny }
+        - { direction: outgoing, policy: allow }
+
+    - name: Allow SSH through UFW, rate-limited against brute force
+      community.general.ufw:
+        rule: limit
+        port: "22"
+        proto: tcp
+
+    - name: Enable UFW
+      community.general.ufw:
+        state: enabled
+
+    - name: Harden sshd -- disable root login and password authentication (key-only from here on)
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        validate: "sshd -t -f %s"
+      loop:
+        - { regexp: "^#?PermitRootLogin", line: "PermitRootLogin no" }
+        - { regexp: "^#?PasswordAuthentication", line: "PasswordAuthentication no" }
+        - { regexp: "^#?PermitEmptyPasswords", line: "PermitEmptyPasswords no" }
+        - { regexp: "^#?X11Forwarding", line: "X11Forwarding no" }
+      notify: restart sshd
+
+  handlers:
+    - name: restart sshd
+      ansible.builtin.systemd:
+        name: ssh
+        state: restarted
