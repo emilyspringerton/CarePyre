@@ -208,6 +208,19 @@
       <div style="width:2.4rem"></div>
     </div>
     <form id="config-form" onsubmit="saveConfig(event)">
+      <!-- CAREPYRE-42143124's own direct follow-up, 2026-09-05: "set up provisioning URL from
+           the console for users under my sip and make the sip phone register with just that
+           URL" -- the real, recommended path now: paste the one URL the console's own "Get
+           provisioning URL" button shows, tap Register, done. No server/port/extension/password
+           fields needed. type="button" so it never triggers this form's own saveConfig. -->
+      <div class="field">
+        <label for="provisioning-url">Provisioning URL (from the CarePyre console)</label>
+        <input id="provisioning-url" type="text" placeholder="https://carepyre.org/console-api/api/v1/sip-provisioning/...">
+      </div>
+      <button class="scan-btn" type="button" onclick="registerFromProvisioningUrl()">Register from URL</button>
+
+      <p style="text-align:center;margin:0.8rem 0;color:var(--text-muted);font-size:0.85rem;">— or configure manually —</p>
+
       <div class="field">
         <label for="cfg-display-name">Display name</label>
         <input id="cfg-display-name" type="text" placeholder="e.g. Front Desk">

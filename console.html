@@ -439,8 +439,14 @@
         '<div class="id-row"><span class="k">Port</span><span class="v">' + esc(String(acct.sip_port)) + '</span></div>' +
         '<p class="sub" style="margin:0.8rem 0 0;">Use these to register a SIP client (or the CarePyre SIP Phone app, once its own native signaling is wired in).</p>' +
         '<div id="sip-qr" style="display:flex;justify-content:center;margin-top:1rem;"></div>' +
-        '<p class="sub" style="margin:0.6rem 0 0;text-align:center;">Scan with a SIP client that supports QR onboarding.</p>';
+        '<p class="sub" style="margin:0.6rem 0 0;text-align:center;">Scan with a SIP client that supports QR onboarding.</p>' +
+        '<button type="button" id="sip-provisioning-url-btn" style="margin-top:1rem;">Get provisioning URL</button>' +
+        '<div id="sip-provisioning-url-wrap" class="hidden" style="margin-top:0.6rem;">' +
+          '<input type="text" id="sip-provisioning-url" readonly style="width:100%;" onclick="this.select()">' +
+          '<p class="sub" style="margin:0.4rem 0 0;">Paste this into the CarePyre SIP Phone app\'s "Provisioning URL" field -- it registers with no other fields needed. Anyone with this exact URL can register as this extension, so treat it like a password.</p>' +
+        '</div>';
       renderSipQR(acct);
+      document.getElementById('sip-provisioning-url-btn').addEventListener('click', loadMyProvisioningUrl);
     } catch (err) {
       body.innerHTML = '<p class="error" style="margin:0;">Could not load your SIP account: ' + esc(err.message) + '</p>';
     }
@@ -455,6 +461,31 @@
     el.innerHTML = '';
     const sipUri = 'sip:' + acct.extension + '@' + acct.sip_server + ':' + acct.sip_port;
     new QRCode(el, { text: sipUri, width: 160, height: 160 });
+  }
+
+  // loadMyProvisioningUrl -- founder real-time, 2026-09-05: "set up provisioning URL from the
+  // console for users under my sip and make the sip phone register with just that URL". Fetched
+  // on demand (button click), not on page load, since the real URL embeds the real PJSIP
+  // password server-side and there's no reason to pull that down before it's actually wanted.
+  async function loadMyProvisioningUrl() {
+    const wrap = document.getElementById('sip-provisioning-url-wrap');
+    const input = document.getElementById('sip-provisioning-url');
+    try {
+      const res = await fetch(API_BASE + '/sip-accounts/me/provisioning-url', { headers: authHeaders() });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        input.value = '';
+        wrap.classList.remove('hidden');
+        input.placeholder = data.error || ('HTTP ' + res.status);
+        return;
+      }
+      input.value = data.url;
+      wrap.classList.remove('hidden');
+    } catch (err) {
+      wrap.classList.remove('hidden');
+      input.value = '';
+      input.placeholder = 'Could not reach the console API: ' + err.message;
+    }
   }
 
   function esc(s) {

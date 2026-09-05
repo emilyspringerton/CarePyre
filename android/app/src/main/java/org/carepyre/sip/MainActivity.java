@@ -70,13 +70,72 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void register(final String server, final String portStr, final String extension,
                               final String password) {
+            int port;
+            try {
+                port = Integer.parseInt(portStr.trim());
+            } catch (NumberFormatException e) {
+                port = 5060;
+            }
+            doRegister(server, port, extension, password);
+        }
+
+        /** registerFromProvisioningUrl -- founder real-time, 2026-09-05: "set up provisioning
+         * URL from the console for users under my sip and make the sip phone register with just
+         * that URL". Fetches the real, per-user capability-URL payload IDUNA_PRO's own
+         * /api/v1/sip-accounts/me/provisioning-url mints (console.html's own "Get provisioning
+         * URL" button) natively in Java, not via the WebView's own fetch() -- a file:// origin
+         * WebView calling a remote https:// URL is a real, fragile cross-origin case (CORS
+         * behavior for file:// pages varies by WebView/Chrome version); native HttpURLConnection
+         * has no such restriction, matching this app's own established pattern of doing all real
+         * networking in Java, not JS. */
+        @JavascriptInterface
+        public void registerFromProvisioningUrl(final String url) {
             new Thread(() -> {
-                int port;
                 try {
-                    port = Integer.parseInt(portStr.trim());
-                } catch (NumberFormatException e) {
-                    port = 5060;
+                    java.net.URL u = new java.net.URL(url);
+                    java.net.HttpURLConnection conn = (java.net.HttpURLConnection) u.openConnection();
+                    conn.setRequestMethod("GET");
+                    conn.setConnectTimeout(10000);
+                    conn.setReadTimeout(10000);
+                    int status = conn.getResponseCode();
+                    java.io.InputStream stream = status >= 200 && status < 300
+                            ? conn.getInputStream() : conn.getErrorStream();
+                    java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
+                    byte[] chunk = new byte[4096];
+                    int n;
+                    while ((n = stream.read(chunk)) != -1) buf.write(chunk, 0, n);
+                    String body = buf.toString("UTF-8");
+
+                    if (status < 200 || status >= 300) {
+                        String err;
+                        try {
+                            err = new org.json.JSONObject(body).optString("error", "HTTP " + status);
+                        } catch (org.json.JSONException e) {
+                            err = "HTTP " + status;
+                        }
+                        final String finalErr = err;
+                        runOnUiThread(() -> webView.evaluateJavascript(
+                                "onRegisterResult(false, " + jsStringLiteral(finalErr) + ")", null));
+                        return;
+                    }
+
+                    org.json.JSONObject payload = new org.json.JSONObject(body);
+                    String extension = payload.getString("extension");
+                    String server = payload.getString("sip_server");
+                    int port = payload.optInt("sip_port", 5060);
+                    String password = payload.getString("password");
+                    doRegister(server, port, extension, password);
+                } catch (Exception e) {
+                    final String message = "Could not fetch provisioning URL: " + e.getMessage();
+                    runOnUiThread(() -> webView.evaluateJavascript(
+                            "onRegisterResult(false, " + jsStringLiteral(message) + ")", null));
                 }
+            }).start();
+        }
+
+        private void doRegister(final String server, final int port, final String extension,
+                                 final String password) {
+            new Thread(() -> {
                 SipClient client = new SipClient(server, port, extension, password, new SipClient.CallListener() {
                     @Override
                     public void onRinging() {

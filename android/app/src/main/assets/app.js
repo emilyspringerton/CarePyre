@@ -183,14 +183,39 @@ function extractExtension(sipUri) {
   return at >= 0 ? rest.slice(0, at) : rest;
 }
 
-// onRegisterResult -- called FROM Java (MainActivity's own SipBridge.register(), after
-// SipClient's real REGISTER attempt completes). Kept as a real, separate, globally-reachable
-// function since Java calls it directly by name via evaluateJavascript, same real convention as
-// onQrScanned() above.
+// onRegisterResult -- called FROM Java (MainActivity's own SipBridge.register() AND
+// registerFromProvisioningUrl(), after SipClient's real REGISTER attempt completes -- both
+// paths report back through this same one function). Kept as a real, separate,
+// globally-reachable function since Java calls it directly by name via evaluateJavascript, same
+// real convention as onQrScanned() above.
 function onRegisterResult(success, message) {
   const status = document.getElementById('save-status');
   status.style.color = success ? '' : '#E5484D';
   status.textContent = (success ? 'Registered: ' : 'Registration failed: ') + message;
+}
+
+// registerFromProvisioningUrl -- founder real-time, 2026-09-05: "set up provisioning URL from
+// the console for users under my sip and make the sip phone register with just that URL". The
+// actual HTTP fetch + JSON parse happens natively in Java (MainActivity's own SipBridge --
+// see its own header comment on why: a file:// origin WebView calling a remote https:// URL
+// via fetch() is a real, fragile cross-origin case). This function is just the real, minimal
+// hand-off + status feedback, same shape as saveConfig() below.
+function registerFromProvisioningUrl() {
+  const url = document.getElementById('provisioning-url').value.trim();
+  const status = document.getElementById('save-status');
+  if (!url) {
+    status.style.color = '#E5484D';
+    status.textContent = 'Paste a provisioning URL first.';
+    return;
+  }
+  if (typeof Android === 'undefined' || !Android.registerFromProvisioningUrl) {
+    status.style.color = '#E5484D';
+    status.textContent = 'No native signaling bridge available here -- run this inside the real Android app.';
+    return;
+  }
+  status.style.color = '';
+  status.textContent = 'Registering...';
+  Android.registerFromProvisioningUrl(url);
 }
 
 // startQrScan / onQrScanned / applySipUri -- CAREPYRE-42143124's own "qr code scan feature to
