@@ -265,6 +265,16 @@ linked C, since this is a JVM host, not a C one.
   constantly; every AndroidManifest.xml comment from the Phase 3 QR-scan pass was rewritten
   without one, verified via a real Python XML parse.
 
+  **Real root cause of the persistent 403 finally found (`sudo-queue/56`'s own log dump)**: not
+  a client bug at all — this box has BOTH the legacy `chan_sip` module and the modern
+  `chan_pjsip` module loaded, and `chan_sip` was intercepting the REGISTER for extension 1000
+  before PJSIP ever saw it, checking it against its own separate `sip.conf` (Debian's stock
+  sample file, never touched by any real deploy here) instead of `pjsip_carepyre_phone.conf`.
+  Every diagnostic on the PJSIP side came back correct because PJSIP's own config genuinely is
+  correct — the request just never reached it. `sudo-queue/57` permanently disables `chan_sip`
+  (`modules.conf`'s own `noload` directive, idempotent, plus an immediate unload). This whole
+  buildout was designed exclusively around `chan_pjsip`; `chan_sip` has no real, intended role.
+
   Real, honest, named boundaries, not silently glossed over: REGISTER only (no periodic
   re-register before the real 3600s `Expires` this sends), `qop=auth` digest only, and **no NAT
   traversal** — `pjsip_carepyre_phone.conf`'s own endpoint doesn't set `rewrite_contact`/
