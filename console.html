@@ -387,6 +387,27 @@
               </form>
             </div>
           </details>
+
+          <!-- Mail encryption at rest -- founder real-time, 2026-09-05: "all of the mailboxes
+               that are created via the console need to be set automatically to encrypted at
+               rest." Real, honest constraint (verified live against Stalwart): mail can't be
+               encrypted until a real OpenPGP public key or S/MIME certificate is on file --
+               there's no server-side switch. Pasting a key here IS the automatic trigger: the
+               moment it's added, encryption turns on immediately, no separate step. -->
+          <details class="section">
+            <summary>Mail encryption at rest</summary>
+            <div class="body">
+              <div id="enc-status"><p class="sub" style="margin:0;">Loading&hellip;</p></div>
+              <div id="enc-add-wrap" class="hidden" style="margin-top:1rem;">
+                <p class="sub" style="margin:0 0 0.6rem;">Paste your OpenPGP public key or S/MIME certificate below. The moment a real key is on file, your mail starts getting encrypted at rest automatically -- CarePyre never sees or holds your private key.</p>
+                <div id="enc-error" class="error hidden"></div>
+                <form id="enc-form">
+                  <textarea id="enc-key" rows="8" placeholder="-----BEGIN PGP PUBLIC KEY BLOCK-----&#10;...&#10;-----END PGP PUBLIC KEY BLOCK-----" style="font-family:monospace;font-size:0.8rem;"></textarea>
+                  <button type="submit">Enable encryption</button>
+                </form>
+              </div>
+            </div>
+          </details>
         </div>
       </div>
 
@@ -626,6 +647,7 @@
 
     loadMySipAccount();
     initMail();
+    loadEncryptionStatus();
 
     const isAdmin = perms.includes('users.admin');
     const isTwilioAdmin = perms.includes('twilio.admin');
@@ -894,6 +916,63 @@
     } catch (err) {
       pwError.textContent = 'Could not reach the console API: ' + err.message;
       pwError.classList.remove('hidden');
+    }
+  });
+
+  // ---- Mail encryption at rest (founder real-time, 2026-09-05: "all of the mailboxes that are
+  // created via the console need to be set automatically to encrypted at rest") ----
+  const CIPHER_LABEL = { Aes128: 'AES-128', Aes256: 'AES-256', Aes256Gcm: 'AES-256-GCM', ChaCha20Poly1305: 'ChaCha20-Poly1305' };
+
+  async function loadEncryptionStatus() {
+    const statusEl = document.getElementById('enc-status');
+    const addWrap = document.getElementById('enc-add-wrap');
+    try {
+      const res = await fetch(API_BASE + '/mail/encryption', { headers: authHeaders() });
+      if (res.status === 428) {
+        statusEl.innerHTML = '<p class="sub" style="margin:0;">Connect your mailbox on the Mail tab first.</p>';
+        addWrap.classList.add('hidden');
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        statusEl.innerHTML = '<p class="error" style="margin:0;">' + esc(data.error || ('HTTP ' + res.status)) + '</p>';
+        return;
+      }
+      if (data.enabled) {
+        statusEl.innerHTML = '<div class="id-row"><span class="k">Status</span><span class="v" style="color:var(--success);">Encrypted (' + esc(CIPHER_LABEL[data.cipher] || data.cipher) + ')</span></div>';
+        addWrap.classList.add('hidden');
+      } else {
+        statusEl.innerHTML = '<div class="id-row"><span class="k">Status</span><span class="v" style="color:var(--error);">Not encrypted</span></div>';
+        addWrap.classList.remove('hidden');
+      }
+    } catch (err) {
+      statusEl.innerHTML = '<p class="error" style="margin:0;">Could not reach the console API: ' + esc(err.message) + '</p>';
+    }
+  }
+
+  document.getElementById('enc-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const key = document.getElementById('enc-key').value.trim();
+    const errEl = document.getElementById('enc-error');
+    errEl.classList.add('hidden');
+    if (!key) { errEl.textContent = 'Paste a public key or certificate first.'; errEl.classList.remove('hidden'); return; }
+    try {
+      const res = await fetch(API_BASE + '/mail/encryption', {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+        body: JSON.stringify({ key }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        errEl.textContent = data.error || ('Could not enable encryption (HTTP ' + res.status + ').');
+        errEl.classList.remove('hidden');
+        return;
+      }
+      document.getElementById('enc-key').value = '';
+      loadEncryptionStatus();
+    } catch (err) {
+      errEl.textContent = 'Could not reach the console API: ' + err.message;
+      errEl.classList.remove('hidden');
     }
   });
 
