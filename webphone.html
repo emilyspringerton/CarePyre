@@ -192,19 +192,22 @@
   <audio id="remote-audio" autoplay playsinline></audio>
 </div>
 
-<script type="module">
-  // JsSIP's own npm package (as of 3.10.1) ships CommonJS only (lib-es5/JsSIP.js uses
-  // require()/module.exports, no browser-ready UMD/global bundle) -- a plain <script src=...>
-  // tag against that file throws "require is not defined" since there's no bundler present to
-  // resolve it. jsdelivr's own "+esm" endpoint solves this for real: it bundles the package
-  // (and its own real transitive deps, debug/sdp-transform) into one genuine ES module on the
-  // fly, importable directly by any modern browser with no build step. See
-  // https://www.jsdelivr.com/esm for how this feature works.
-  import * as JsSIPModule from 'https://cdn.jsdelivr.net/npm/jssip@3.10.1/+esm';
-  window.JsSIP = JsSIPModule.default || JsSIPModule;
-  const script = document.createElement('script');
-  script.src = 'webphone.js';
-  document.body.appendChild(script);
-</script>
+<!--
+  vendor/jssip-3.10.1.min.js -- a real, self-built browser bundle (esbuild --bundle --format=iife
+  --global-name=JsSIP against JsSIP's own published npm package), vendored directly into this
+  repo. Two real, external approaches were tried and failed first: (1) JsSIP's own npm package
+  ships CommonJS only (lib-es5/JsSIP.js uses require()/module.exports, no browser-ready
+  UMD/global build at all) -- a plain <script src> tag against it threw "require is not defined".
+  (2) jsdelivr's own "+esm" auto-bundling endpoint worked for the top-level jssip package but its
+  own internal import of a transitive dependency (sdp-transform's own +esm build) 404s across
+  every published sdp-transform version tried -- an external, jsdelivr-side bundling failure this
+  repo can't fix or wait out. Vendoring a real, verified-working local build removes the
+  dependency on either external service being correct. JsSIP is MIT licensed
+  (https://github.com/versatica/JsSIP/blob/master/LICENSE); this bundle is unmodified upstream
+  source, just concatenated for the browser -- see that file's own header for the exact
+  esbuild/jssip versions used to build it.
+-->
+<script src="vendor/jssip-3.10.1.min.js"></script>
+<script src="webphone.js"></script>
 </body>
 </html>
