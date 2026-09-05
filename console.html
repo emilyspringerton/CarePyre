@@ -36,6 +36,15 @@
   IDUNA_PRO's own sip_accounts migration comment); and an admin-only panel (shown only when
   "users.admin" is in the signed-in identity's own effective_permissions) to list users, assign
   their SIP account, and reset a user's password.
+
+  Visual refresh (2026-09-05, CAREPYRE-CONSOLE-REFRESH-1): founder approved a /design clickable
+  prototype ("yep looks great make it so make sure its responsive") replacing the old single
+  narrow accordion-stack card with a sidebar-nav app shell (Mail / SIP Phone / Account / Admin)
+  and a two-pane Mail experience (persistent message list + reading pane on wide viewports).
+  All existing business logic/endpoints below are unchanged -- this is a markup/CSS
+  reorganization, not a re-architecture. Responsive: the sidebar becomes a horizontal scrollable
+  tab strip and the Mail two-pane collapses to a single pane (list, or reading pane with a Back
+  button) below 760px, since the approved prototype itself was desktop-first only.
 -->
 <html lang="en">
 <head>
@@ -53,8 +62,11 @@
     --cyan: #22D3EE; --orange: #FF8A3D;
     --text: #1A2733; --text-muted: #5B6B76; --border: #D6E8F0;
     --error: #C0392B; --success: #2FAE6B;
+    --sidebar: #F3FAFD;
+    --header-h: 65px;
   }
   * { box-sizing: border-box; }
+  html, body { height: 100%; }
   body {
     margin: 0; min-height: 100vh;
     background: radial-gradient(circle at top, var(--bg-soft) 0%, var(--bg) 60%);
@@ -65,13 +77,14 @@
   a { color: var(--blue-dark); }
   a:hover { color: var(--orange); }
   header {
-    padding: 1.5rem 2rem; display: flex; align-items: center; justify-content: space-between;
+    height: var(--header-h); box-sizing: border-box;
+    padding: 0 2rem; display: flex; align-items: center; justify-content: space-between;
     border-bottom: 1px solid var(--border);
   }
   .brand { display: flex; align-items: center; gap: 0.6rem; font-weight: 700; color: var(--blue-dark); font-size: 1.1rem; }
   .brand .dot { width: 10px; height: 10px; border-radius: 999px; background: var(--orange); }
-  main { max-width: 480px; margin: 0 auto; padding: 3rem 1.5rem 4rem; display: flex; flex-direction: column; gap: 1.5rem; }
-  main.wide { max-width: 720px; }
+
+  .auth-main { max-width: 480px; margin: 0 auto; padding: 3rem 1.5rem 4rem; display: flex; flex-direction: column; gap: 1.5rem; }
   .card {
     background: var(--bg); border: 1px solid var(--border); border-radius: 14px;
     padding: 2rem; box-shadow: 0 12px 32px -20px rgba(63,169,220,0.35);
@@ -80,11 +93,11 @@
   h2 { font-size: 1.1rem; margin: 0 0 0.4rem; color: var(--text); }
   .sub { color: var(--text-muted); margin: 0 0 1.6rem; font-size: 0.92rem; }
   label { display: block; font-size: 0.78rem; color: var(--text-muted); margin: 0 0 0.3rem; font-weight: 600; }
-  input {
+  input, textarea {
     width: 100%; padding: 0.65rem 0.8rem; margin-bottom: 1rem; font: inherit; font-size: 0.95rem;
     border: 1px solid var(--border); border-radius: 8px; background: var(--bg-soft); color: var(--text);
   }
-  input:focus { outline: none; border-color: var(--blue); }
+  input:focus, textarea:focus { outline: none; border-color: var(--blue); }
   button {
     width: 100%; padding: 0.75rem; font: inherit; font-size: 0.95rem; font-weight: 600;
     border: none; border-radius: 999px; background: var(--orange); color: #fff; cursor: pointer;
@@ -98,16 +111,15 @@
   .success-msg { color: var(--success); font-size: 0.85rem; margin: -0.6rem 0 1rem; }
   .hidden { display: none !important; }
 
-  .id-row { display: flex; justify-content: space-between; padding: 0.7rem 0; border-bottom: 1px solid var(--border); font-size: 0.92rem; }
+  .id-row { display: flex; justify-content: space-between; padding: 0.7rem 0; border-bottom: 1px solid var(--border); font-size: 0.92rem; gap: 1rem; }
   .id-row:last-child { border-bottom: none; }
-  .id-row .k { color: var(--text-muted); }
-  .id-row .v { font-weight: 600; text-align: right; }
+  .id-row .k { color: var(--text-muted); flex: none; }
+  .id-row .v { font-weight: 600; text-align: right; overflow-wrap: anywhere; }
   .perm-pill {
     display: inline-block; background: var(--bg-soft); border: 1px solid var(--border);
     color: var(--blue-dark); font-size: 0.72rem; padding: 0.2rem 0.6rem; border-radius: 999px;
     margin: 0.2rem 0.3rem 0 0;
   }
-  .signout { text-align: center; margin-top: 1.6rem; }
 
   details.section { border-top: 1px solid var(--border); margin-top: 1.4rem; padding-top: 1.2rem; }
   details.section summary { cursor: pointer; font-weight: 600; font-size: 0.92rem; color: var(--blue-dark); list-style: none; }
@@ -120,7 +132,92 @@
   th, td { text-align: left; padding: 0.55rem 0.5rem; border-bottom: 1px solid var(--border); }
   th { color: var(--text-muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
   td input { margin-bottom: 0; padding: 0.4rem 0.5rem; font-size: 0.82rem; }
-  .row-actions { display: flex; gap: 0.4rem; align-items: center; }
+  .row-actions { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
+
+  /* ---- App shell (sidebar nav + content), 2026-09-05 refresh ---- */
+  .app-shell { display: flex; min-height: calc(100vh - var(--header-h)); align-items: stretch; }
+  .sidebar {
+    width: 220px; flex: none; background: var(--sidebar); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; padding: 1.2rem 0.9rem;
+  }
+  .sidebar-nav { display: flex; flex-direction: column; gap: 0.15rem; }
+  .navbtn {
+    width: 100%; display: flex; align-items: center; gap: 0.65rem; text-align: left;
+    background: transparent; border: none; border-radius: 10px; padding: 0.62rem 0.8rem;
+    font-size: 0.88rem; font-weight: 500; color: var(--text);
+  }
+  .navbtn svg { flex: none; stroke: var(--text-muted); }
+  .navbtn.active { background: #fff; color: var(--blue-dark); font-weight: 700; box-shadow: 0 4px 14px -9px rgba(63,169,220,0.5); }
+  .navbtn.active svg { stroke: var(--blue-dark); }
+  .sidebar-footer {
+    margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 0.6rem;
+  }
+  .avatar-circle {
+    width: 30px; height: 30px; border-radius: 999px; background: var(--blue); color: #fff;
+    font-size: 0.78rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none;
+  }
+  .sidebar-footer .who { min-width: 0; flex: 1; }
+  .sidebar-footer .who .email { font-size: 0.8rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sidebar-footer .who button { all: unset; cursor: pointer; font-size: 0.72rem; color: var(--text-muted); }
+  .sidebar-footer .who button:hover { color: var(--orange); }
+
+  .content { flex: 1; min-width: 0; padding: 2rem 2.2rem; overflow-y: auto; }
+  .content-inner { max-width: 960px; margin: 0 auto; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .page h1 { font-size: 1.35rem; }
+
+  /* ---- Mail two-pane ---- */
+  .mail-layout { display: flex; gap: 1.4rem; align-items: flex-start; }
+  .mail-list-pane { width: 320px; flex: none; }
+  .mail-list-pane-header { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.5rem; }
+  .mail-list-pane-header .actions { display: flex; gap: 0.4rem; }
+  .mail-reading-pane { flex: 1; min-width: 0; }
+  .mail-row {
+    width: 100%; text-align: left; border: none; background: transparent; cursor: pointer;
+    border-radius: 10px; padding: 0.65rem 0.6rem; margin-bottom: 0.15rem; display: flex; gap: 0.6rem; align-items: flex-start;
+  }
+  .mail-row:hover { background: var(--bg-soft); }
+  .mail-row.selected { background: var(--bg-soft); }
+  .mail-row .initial {
+    width: 30px; height: 30px; border-radius: 999px; background: var(--blue); color: #fff;
+    font-size: 0.74rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none; margin-top: 0.05rem;
+  }
+  .mail-row .meta { min-width: 0; flex: 1; }
+  .mail-row .from { font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+  .mail-row .from.unread { font-weight: 700; }
+  .mail-row .subject { font-size: 0.82rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mail-row.selected .subject, .mail-row.selected .from { color: var(--text); }
+  .icon-btn {
+    width: 34px; height: 34px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg);
+    color: var(--text-muted); display: flex; align-items: center; justify-content: center; padding: 0;
+  }
+  .mail-back-btn { all: unset; cursor: pointer; color: var(--blue-dark); font-size: 0.85rem; display: none; margin-bottom: 0.8rem; }
+  .mail-empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.7rem;
+    color: var(--text-muted); padding: 3rem 1rem; text-align: center;
+  }
+
+  @media (max-width: 760px) {
+    .app-shell { flex-direction: column; min-height: 0; }
+    .sidebar {
+      width: 100%; flex-direction: row; align-items: center; overflow-x: auto;
+      border-right: none; border-bottom: 1px solid var(--border); padding: 0.6rem 0.8rem; gap: 0.3rem;
+    }
+    .sidebar-nav { flex-direction: row; gap: 0.3rem; }
+    .navbtn { width: auto; white-space: nowrap; }
+    .sidebar-footer { margin-top: 0; margin-left: auto; padding-top: 0; border-top: none; border-left: 1px solid var(--border); padding-left: 0.7rem; }
+    .sidebar-footer .who .email { display: none; }
+    .content { padding: 1.2rem 1rem; }
+
+    .mail-layout[data-view="list"] .mail-reading-pane { display: none; }
+    .mail-layout[data-view="message"] .mail-list-pane,
+    .mail-layout[data-view="compose"] .mail-list-pane { display: none; }
+    .mail-layout { display: block; }
+    .mail-list-pane, .mail-reading-pane { width: 100%; }
+    .mail-back-btn { display: inline-block; }
+  }
 </style>
 </head>
 <body>
@@ -130,7 +227,7 @@
   <a href="/index.html">carepyre.org</a>
 </header>
 
-<main id="main">
+<main class="auth-main" id="auth-main">
   <!-- Auth card: login/register toggle -->
   <div class="card" id="auth-card">
     <h1 id="auth-title">Sign in</h1>
@@ -152,174 +249,232 @@
       <span id="toggle-to-login-wrap" class="hidden">Already have an account? <button id="toggle-to-login">Sign in</button></span>
     </div>
   </div>
-
-  <!-- Console card: shown once signed in -->
-  <div class="card hidden" id="console-card">
-    <h1>Welcome<span id="console-name"></span></h1>
-    <p class="sub">Your CarePyre account, live from IDUNA_PRO.</p>
-    <div class="id-row"><span class="k">Email</span><span class="v" id="c-email"></span></div>
-    <div class="id-row"><span class="k">Identity</span><span class="v" id="c-id"></span></div>
-    <div class="id-row"><span class="k">Status</span><span class="v" id="c-status"></span></div>
-    <div class="id-row" style="display:block;">
-      <span class="k">Permissions</span>
-      <div id="c-permissions" style="margin-top:0.4rem;"></div>
-    </div>
-
-    <!-- Your SIP account -->
-    <details class="section">
-      <summary>Your SIP account</summary>
-      <div class="body" id="sip-info-body">
-        <p class="sub" style="margin:0;">Loading…</p>
-      </div>
-    </details>
-
-    <!-- Mail (founder real-time, 2026-09-05: "minimal custom webmail in the console") -- real,
-         deliberately minimal v0: Inbox only, plain text only. Available to any logged-in user,
-         not admin-gated (real, per-user feature, distinct from the admin-only Mail accounts
-         provisioning panel below). A user connects their OWN real Stalwart mailbox credential
-         once per browser session -- IDUNA_PRO never persists it, see webmail.go's own header
-         comment. -->
-    <details class="section" open>
-      <summary>Mail</summary>
-      <div class="body">
-        <div id="mail-connect-wrap">
-          <p class="sub" style="margin:0 0 0.6rem;">Connect your CarePyre mailbox to read and send mail here.</p>
-          <div id="mail-connect-error" class="error hidden"></div>
-          <form id="mail-connect-form">
-            <label for="mail-connect-email">Email</label>
-            <input id="mail-connect-email" type="email" placeholder="you@carepyre.org" required>
-            <label for="mail-connect-password">Password</label>
-            <input id="mail-connect-password" type="password" required>
-            <button type="submit">Connect</button>
-          </form>
-        </div>
-        <div id="mail-inbox-wrap" class="hidden">
-          <p class="sub" style="margin:0 0 0.6rem;">Connected as <span id="mail-connected-email"></span></p>
-          <button type="button" id="mail-compose-btn">Compose</button>
-          <button type="button" id="mail-refresh-btn">Refresh</button>
-          <div id="mail-list" style="margin-top:0.8rem;"></div>
-        </div>
-        <div id="mail-message-view" class="hidden" style="margin-top:0.8rem;">
-          <button type="button" id="mail-back-btn">&larr; Back to inbox</button>
-          <div id="mail-message-body" style="margin-top:0.6rem;"></div>
-        </div>
-        <div id="mail-compose-view" class="hidden" style="margin-top:0.8rem;">
-          <div id="mail-send-error" class="error hidden"></div>
-          <form id="mail-compose-form">
-            <label for="mail-compose-to">To</label>
-            <input id="mail-compose-to" type="email" required>
-            <label for="mail-compose-subject">Subject</label>
-            <input id="mail-compose-subject" type="text">
-            <label for="mail-compose-body">Message</label>
-            <textarea id="mail-compose-body" rows="6" style="width:100%;font-family:inherit;"></textarea>
-            <button type="submit">Send</button>
-            <button type="button" id="mail-compose-cancel-btn">Cancel</button>
-          </form>
-        </div>
-      </div>
-    </details>
-
-    <!-- Change password -->
-    <details class="section">
-      <summary>Change password</summary>
-      <div class="body">
-        <div id="pw-error" class="error hidden"></div>
-        <div id="pw-success" class="success-msg hidden"></div>
-        <form id="pw-form">
-          <label for="pw-current">Current password</label>
-          <input id="pw-current" type="password" required autocomplete="current-password">
-          <label for="pw-new">New password</label>
-          <input id="pw-new" type="password" required minlength="8" autocomplete="new-password">
-          <button type="submit">Update password</button>
-        </form>
-      </div>
-    </details>
-
-    <div class="signout"><button class="secondary" id="signout-btn">Sign out</button></div>
-  </div>
-
-  <!-- Admin panel: only rendered when the signed-in identity's own effective_permissions
-       includes users.admin (server-enforced too -- every call below still requires the real
-       permission; this hidden-by-default panel is a UX convenience, not the actual gate). -->
-  <div class="card hidden" id="admin-card">
-    <h2>Admin — Users</h2>
-    <p class="sub">Assign a SIP account or reset a password for any user.</p>
-    <div id="admin-error" class="error hidden"></div>
-    <div id="admin-success" class="success-msg hidden"></div>
-    <div style="overflow-x:auto;">
-      <table>
-        <thead>
-          <tr><th>UID</th><th>Email</th><th>Status</th><th>SIP extension</th><th></th></tr>
-        </thead>
-        <tbody id="admin-users-body"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- Twilio admin panel (CP-SIP-242414/TWILLIO-API-124): only rendered when the signed-in
-       identity's own effective_permissions includes twilio.admin -- a real, separate
-       permission from users.admin (see IDUNA_PRO's own localUserPermissions). All calls go
-       through IDUNA_PRO's own credential-holding proxy (/api/v1/twilio/*) -- the real Twilio
-       API Key never reaches this page. -->
-  <div class="card hidden" id="twilio-card">
-    <h2>Twilio</h2>
-    <p class="sub">Trunk, numbers, and balance for this account.</p>
-    <div id="twilio-error" class="error hidden"></div>
-    <div id="twilio-success" class="success-msg hidden"></div>
-    <div id="twilio-body"><p class="sub" style="margin:0;">Loading…</p></div>
-    <details class="section">
-      <summary>Create a trunk</summary>
-      <div class="body">
-        <form id="twilio-trunk-form">
-          <label for="twilio-trunk-name">Friendly name</label>
-          <input id="twilio-trunk-name" type="text" value="CarePyre" required>
-          <label for="twilio-trunk-domain">Termination domain</label>
-          <input id="twilio-trunk-domain" type="text" placeholder="carepyre.pstn.twilio.com" required>
-          <button type="submit">Create trunk</button>
-        </form>
-      </div>
-    </details>
-  </div>
-
-  <!-- Mail accounts admin panel: founder real-time, 2026-09-05, "ok we need a way to provision
-       accounts from the carepyre admin console is that possible?" -- gated on users.admin, same
-       permission as admin-card above (explicit founder decision: "For now admins can provision
-       because sign up is just open", i.e. console self-signup is open but mailbox provisioning
-       specifically stays admin-only). All calls go through IDUNA_PRO's own credential-holding
-       proxy (/api/v1/mail-accounts) -- the real Stalwart admin credential never reaches this
-       page, same real pattern the Twilio panel above already establishes. -->
-  <div class="card hidden" id="mail-accounts-card">
-    <h2>Mail accounts</h2>
-    <p class="sub">Provision a real mailbox on mail.carepyre.org.</p>
-    <div id="mail-accounts-error" class="error hidden"></div>
-    <div id="mail-accounts-success" class="success-msg hidden"></div>
-    <div style="overflow-x:auto;">
-      <table>
-        <thead>
-          <tr><th>Email</th><th>Created</th></tr>
-        </thead>
-        <tbody id="mail-accounts-body"></tbody>
-      </table>
-    </div>
-    <details class="section">
-      <summary>Create a mailbox</summary>
-      <div class="body">
-        <form id="mail-account-form">
-          <label for="mail-account-username">Username (local part only, e.g. "jane")</label>
-          <input id="mail-account-username" type="text" placeholder="jane" required>
-          <label for="mail-account-domain">Domain</label>
-          <input id="mail-account-domain" type="text" value="carepyre.org" required>
-          <p class="sub" style="margin:0 0 0.6rem;">A real, random password is generated and shown once below -- it is never stored by this console.</p>
-          <button type="submit">Create mailbox</button>
-        </form>
-        <div id="mail-account-created" class="hidden" style="margin-top:0.8rem;">
-          <div class="id-row"><span class="k">Email</span><span class="v" id="mail-account-created-email"></span></div>
-          <div class="id-row"><span class="k">Password</span><span class="v" id="mail-account-created-password"></span></div>
-        </div>
-      </div>
-    </details>
-  </div>
 </main>
+
+<!-- App shell: shown once signed in. Sidebar nav switches between Mail / SIP Phone / Account /
+     Admin pages -- all real functionality below is unchanged from before the visual refresh,
+     just regrouped out of the old accordion stack. -->
+<div class="app-shell hidden" id="app-shell">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-nav">
+      <button class="navbtn active" data-page="mail" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/></svg>
+        <span>Mail</span>
+      </button>
+      <button class="navbtn" data-page="sip" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 9 9 0 0 0 2.8.45 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1 9 9 0 0 0 .45 2.8 1 1 0 0 1-.25 1z"/></svg>
+        <span>SIP Phone</span>
+      </button>
+      <button class="navbtn" data-page="account" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>
+        <span>Account</span>
+      </button>
+      <button class="navbtn hidden" data-page="admin" id="nav-admin" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></svg>
+        <span>Admin</span>
+      </button>
+    </div>
+    <div class="sidebar-footer">
+      <div class="avatar-circle" id="sidebar-avatar">C</div>
+      <div class="who">
+        <div class="email" id="sidebar-email"></div>
+        <button type="button" id="signout-btn">Sign out</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="content">
+    <div class="content-inner">
+
+      <!-- Mail page -->
+      <div class="page active" id="page-mail">
+        <div class="card">
+          <div id="mail-connect-wrap">
+            <h1>Mail</h1>
+            <p class="sub">Connect your CarePyre mailbox to read and send mail here.</p>
+            <div id="mail-connect-error" class="error hidden"></div>
+            <form id="mail-connect-form">
+              <label for="mail-connect-email">Email</label>
+              <input id="mail-connect-email" type="email" placeholder="you@carepyre.org" required>
+              <label for="mail-connect-password">Password</label>
+              <input id="mail-connect-password" type="password" required>
+              <button type="submit">Connect</button>
+            </form>
+          </div>
+
+          <div id="mail-app-wrap" class="hidden mail-layout" data-view="list">
+            <div class="mail-list-pane">
+              <div class="mail-list-pane-header">
+                <h2 style="margin:0;">Inbox</h2>
+                <div class="actions">
+                  <button type="button" id="mail-refresh-btn" class="small secondary" style="margin-top:0;">Refresh</button>
+                  <button type="button" id="mail-compose-btn" class="small" style="margin-top:0;">Compose</button>
+                </div>
+              </div>
+              <p class="sub" style="margin:0 0 0.6rem;">Connected as <span id="mail-connected-email"></span></p>
+              <div id="mail-list"></div>
+            </div>
+
+            <div class="mail-reading-pane">
+              <button type="button" class="mail-back-btn" id="mail-back-btn">&larr; Back to inbox</button>
+
+              <div id="mail-empty-view">
+                <div class="mail-empty-state">
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/></svg>
+                  <div>Select a message to read it</div>
+                </div>
+              </div>
+
+              <div id="mail-message-view" class="hidden">
+                <div id="mail-message-body"></div>
+              </div>
+
+              <div id="mail-compose-view" class="hidden">
+                <div id="mail-send-error" class="error hidden"></div>
+                <form id="mail-compose-form">
+                  <label for="mail-compose-to">To</label>
+                  <input id="mail-compose-to" type="email" required>
+                  <label for="mail-compose-subject">Subject</label>
+                  <input id="mail-compose-subject" type="text">
+                  <label for="mail-compose-body">Message</label>
+                  <textarea id="mail-compose-body" rows="10"></textarea>
+                  <div style="display:flex; gap:0.7rem;">
+                    <button type="submit" style="width:auto;">Send</button>
+                    <button type="button" id="mail-compose-cancel-btn" class="secondary" style="width:auto; margin-top:0;">Cancel</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SIP Phone page -->
+      <div class="page" id="page-sip">
+        <div class="card">
+          <h1>Your SIP account</h1>
+          <p class="sub">Metadata for registering a SIP client against this deployment.</p>
+          <div id="sip-info-body">
+            <p class="sub" style="margin:0;">Loading&hellip;</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Account page -->
+      <div class="page" id="page-account">
+        <div class="card">
+          <h1>Account<span id="console-name"></span></h1>
+          <p class="sub">Your CarePyre account, live from IDUNA_PRO.</p>
+          <div class="id-row"><span class="k">Email</span><span class="v" id="c-email"></span></div>
+          <div class="id-row"><span class="k">Identity</span><span class="v" id="c-id"></span></div>
+          <div class="id-row"><span class="k">Status</span><span class="v" id="c-status"></span></div>
+          <div class="id-row" style="display:block;">
+            <span class="k">Permissions</span>
+            <div id="c-permissions" style="margin-top:0.4rem;"></div>
+          </div>
+
+          <details class="section" open>
+            <summary>Change password</summary>
+            <div class="body">
+              <div id="pw-error" class="error hidden"></div>
+              <div id="pw-success" class="success-msg hidden"></div>
+              <form id="pw-form">
+                <label for="pw-current">Current password</label>
+                <input id="pw-current" type="password" required autocomplete="current-password">
+                <label for="pw-new">New password</label>
+                <input id="pw-new" type="password" required minlength="8" autocomplete="new-password">
+                <button type="submit">Update password</button>
+              </form>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <!-- Admin page: only reachable (nav item shown) when the signed-in identity's own
+           effective_permissions includes users.admin or twilio.admin (server-enforced too --
+           every call below still requires the real permission; this hidden-by-default nav item
+           is a UX convenience, not the actual gate). -->
+      <div class="page" id="page-admin">
+        <div class="card hidden" id="admin-card">
+          <h2>Users</h2>
+          <p class="sub">Assign a SIP account or reset a password for any user.</p>
+          <div id="admin-error" class="error hidden"></div>
+          <div id="admin-success" class="success-msg hidden"></div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead>
+                <tr><th>UID</th><th>Email</th><th>Status</th><th>SIP extension</th><th></th></tr>
+              </thead>
+              <tbody id="admin-users-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Twilio admin panel (CP-SIP-242414/TWILLIO-API-124): only rendered when the signed-in
+             identity's own effective_permissions includes twilio.admin -- a real, separate
+             permission from users.admin. All calls go through IDUNA_PRO's own credential-holding
+             proxy (/api/v1/twilio/*) -- the real Twilio API Key never reaches this page. -->
+        <div class="card hidden" id="twilio-card" style="margin-top:1.5rem;">
+          <h2>Twilio</h2>
+          <p class="sub">Trunk, numbers, and balance for this account.</p>
+          <div id="twilio-error" class="error hidden"></div>
+          <div id="twilio-success" class="success-msg hidden"></div>
+          <div id="twilio-body"><p class="sub" style="margin:0;">Loading&hellip;</p></div>
+          <details class="section">
+            <summary>Create a trunk</summary>
+            <div class="body">
+              <form id="twilio-trunk-form">
+                <label for="twilio-trunk-name">Friendly name</label>
+                <input id="twilio-trunk-name" type="text" value="CarePyre" required>
+                <label for="twilio-trunk-domain">Termination domain</label>
+                <input id="twilio-trunk-domain" type="text" placeholder="carepyre.pstn.twilio.com" required>
+                <button type="submit">Create trunk</button>
+              </form>
+            </div>
+          </details>
+        </div>
+
+        <!-- Mail accounts admin panel: founder real-time, 2026-09-05, "ok we need a way to
+             provision accounts from the carepyre admin console is that possible?" -- gated on
+             users.admin, same permission as the Users panel above (explicit founder decision:
+             "For now admins can provision because sign up is just open"). All calls go through
+             IDUNA_PRO's own credential-holding proxy (/api/v1/mail-accounts). -->
+        <div class="card hidden" id="mail-accounts-card" style="margin-top:1.5rem;">
+          <h2>Mail accounts</h2>
+          <p class="sub">Provision a real mailbox on mail.carepyre.org.</p>
+          <div id="mail-accounts-error" class="error hidden"></div>
+          <div id="mail-accounts-success" class="success-msg hidden"></div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead>
+                <tr><th>Email</th><th>Created</th></tr>
+              </thead>
+              <tbody id="mail-accounts-body"></tbody>
+            </table>
+          </div>
+          <details class="section">
+            <summary>Create a mailbox</summary>
+            <div class="body">
+              <form id="mail-account-form">
+                <label for="mail-account-username">Username (local part only, e.g. "jane")</label>
+                <input id="mail-account-username" type="text" placeholder="jane" required>
+                <label for="mail-account-domain">Domain</label>
+                <input id="mail-account-domain" type="text" value="carepyre.org" required>
+                <p class="sub" style="margin:0 0 0.6rem;">A real, random password is generated and shown once below -- it is never stored by this console.</p>
+                <button type="submit">Create mailbox</button>
+              </form>
+              <div id="mail-account-created" class="hidden" style="margin-top:0.8rem;">
+                <div class="id-row"><span class="k">Email</span><span class="v" id="mail-account-created-email"></span></div>
+                <div class="id-row"><span class="k">Password</span><span class="v" id="mail-account-created-password"></span></div>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
 
 <script>
   // Same-origin relative path -- nginx's own /console-api/ location proxies this to the real,
@@ -332,7 +487,7 @@
 
   const els = {
     authCard: document.getElementById('auth-card'),
-    consoleCard: document.getElementById('console-card'),
+    appShell: document.getElementById('app-shell'),
     authTitle: document.getElementById('auth-title'),
     authSub: document.getElementById('auth-sub'),
     authError: document.getElementById('auth-error'),
@@ -348,6 +503,15 @@
     toLogin: document.getElementById('toggle-to-login'),
     signoutBtn: document.getElementById('signout-btn'),
   };
+
+  // ---- Sidebar page switching ----
+  function showPage(page) {
+    document.querySelectorAll('.page').forEach((el) => el.classList.toggle('active', el.id === 'page-' + page));
+    document.querySelectorAll('.sidebar .navbtn[data-page]').forEach((btn) => btn.classList.toggle('active', btn.dataset.page === page));
+  }
+  document.querySelectorAll('.sidebar .navbtn[data-page]').forEach((btn) => {
+    btn.addEventListener('click', () => showPage(btn.dataset.page));
+  });
 
   function setMode(next) {
     mode = next;
@@ -439,6 +603,8 @@
     document.getElementById('c-email').textContent = identity.email || '—';
     document.getElementById('c-id').textContent = identity.id || '—';
     document.getElementById('c-status').textContent = identity.status || '—';
+    document.getElementById('sidebar-email').textContent = identity.email || '';
+    document.getElementById('sidebar-avatar').textContent = (identity.email || 'C').charAt(0).toUpperCase();
     const permsEl = document.getElementById('c-permissions');
     permsEl.innerHTML = '';
     const perms = rbac.effective_permissions || [];
@@ -453,7 +619,8 @@
       }
     }
     els.authCard.classList.add('hidden');
-    els.consoleCard.classList.remove('hidden');
+    els.appShell.classList.remove('hidden');
+    showPage('mail');
 
     loadMySipAccount();
     initMail();
@@ -463,7 +630,7 @@
     document.getElementById('admin-card').classList.toggle('hidden', !isAdmin);
     document.getElementById('twilio-card').classList.toggle('hidden', !isTwilioAdmin);
     document.getElementById('mail-accounts-card').classList.toggle('hidden', !isAdmin);
-    document.getElementById('main').classList.toggle('wide', isAdmin || isTwilioAdmin);
+    document.getElementById('nav-admin').classList.toggle('hidden', !(isAdmin || isTwilioAdmin));
     if (isAdmin) loadAdminUsers();
     if (isTwilioAdmin) loadTwilioStatus();
     if (isAdmin) loadMailAccounts();
@@ -487,7 +654,7 @@
         '<p class="sub" style="margin:0.8rem 0 0;">Use these to register a SIP client (or the CarePyre SIP Phone app, once its own native signaling is wired in).</p>' +
         '<div id="sip-qr" style="display:flex;justify-content:center;margin-top:1rem;"></div>' +
         '<p class="sub" style="margin:0.6rem 0 0;text-align:center;">Scan with a SIP client that supports QR onboarding.</p>' +
-        '<button type="button" id="sip-provisioning-url-btn" style="margin-top:1rem;">Get provisioning URL</button>' +
+        '<button type="button" id="sip-provisioning-url-btn" style="margin-top:1rem;width:auto;">Get provisioning URL</button>' +
         '<div id="sip-provisioning-url-wrap" class="hidden" style="margin-top:0.6rem;">' +
           '<input type="text" id="sip-provisioning-url" readonly style="width:100%;" onclick="this.select()">' +
           '<p class="sub" style="margin:0.4rem 0 0;">Paste this into the CarePyre SIP Phone app\'s "Provisioning URL" field -- it registers with no other fields needed. Anyone with this exact URL can register as this extension, so treat it like a password.</p>' +
@@ -536,9 +703,18 @@
   }
 
   // ---- Mail (founder real-time, 2026-09-05: "minimal custom webmail in the console") ----
+  // mailShow: 'connect' shows the connect form; 'inbox'/'message'/'compose' all show the
+  // two-pane mail-app-wrap, with data-view driving which pane is visible on narrow viewports
+  // (see the @media rule above) -- on wide viewports the list pane always stays visible.
+  let selectedMailId = null;
   function mailShow(view) {
-    document.getElementById('mail-connect-wrap').classList.toggle('hidden', view !== 'connect');
-    document.getElementById('mail-inbox-wrap').classList.toggle('hidden', view !== 'inbox');
+    const connectWrap = document.getElementById('mail-connect-wrap');
+    const appWrap = document.getElementById('mail-app-wrap');
+    connectWrap.classList.toggle('hidden', view !== 'connect');
+    appWrap.classList.toggle('hidden', view === 'connect');
+    if (view === 'connect') return;
+    appWrap.dataset.view = (view === 'inbox') ? 'list' : view;
+    document.getElementById('mail-empty-view').classList.toggle('hidden', view !== 'inbox');
     document.getElementById('mail-message-view').classList.toggle('hidden', view !== 'message');
     document.getElementById('mail-compose-view').classList.toggle('hidden', view !== 'compose');
   }
@@ -589,7 +765,7 @@
 
   async function loadMailInbox() {
     const list = document.getElementById('mail-list');
-    list.innerHTML = '<p class="sub" style="margin:0;">Loading…</p>';
+    list.innerHTML = '<p class="sub" style="margin:0;">Loading&hellip;</p>';
     try {
       const res = await fetch(API_BASE + '/mail/messages', { headers: authHeaders() });
       const data = await res.json().catch(() => ([]));
@@ -603,15 +779,16 @@
       }
       list.innerHTML = '';
       for (const m of data) {
-        const row = document.createElement('div');
-        row.className = 'id-row';
-        row.style.cursor = 'pointer';
-        row.style.borderBottom = '1px solid var(--border)';
-        row.style.padding = '0.5rem 0';
         const fromName = (m.from && m.from[0] && (m.from[0].name || m.from[0].email)) || '(unknown)';
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'mail-row' + (m.id === selectedMailId ? ' selected' : '');
         row.innerHTML =
-          '<span class="k" style="' + (m.unread ? 'font-weight:700;' : '') + '">' + esc(fromName) + '</span>' +
-          '<span class="v">' + esc(m.subject || '(no subject)') + '</span>';
+          '<span class="initial">' + esc(fromName.charAt(0).toUpperCase()) + '</span>' +
+          '<span class="meta">' +
+            '<span class="from' + (m.unread ? ' unread' : '') + '">' + esc(fromName) + '</span>' +
+            '<span class="subject">' + esc(m.subject || '(no subject)') + '</span>' +
+          '</span>';
         row.addEventListener('click', () => loadMailMessage(m.id));
         list.appendChild(row);
       }
@@ -621,9 +798,12 @@
   }
 
   async function loadMailMessage(id) {
+    selectedMailId = id;
     mailShow('message');
+    document.querySelectorAll('#mail-list .mail-row').forEach((row, i) => {});
+    loadMailInbox(); // re-render to reflect the newly-selected row's highlight
     const body = document.getElementById('mail-message-body');
-    body.innerHTML = '<p class="sub" style="margin:0;">Loading…</p>';
+    body.innerHTML = '<p class="sub" style="margin:0;">Loading&hellip;</p>';
     try {
       const res = await fetch(API_BASE + '/mail/messages/' + encodeURIComponent(id), { headers: authHeaders() });
       const data = await res.json().catch(() => ({}));
@@ -642,10 +822,10 @@
     }
   }
 
-  document.getElementById('mail-back-btn').addEventListener('click', () => mailShow('inbox'));
+  document.getElementById('mail-back-btn').addEventListener('click', () => { selectedMailId = null; mailShow('inbox'); loadMailInbox(); });
   document.getElementById('mail-refresh-btn').addEventListener('click', loadMailInbox);
   document.getElementById('mail-compose-btn').addEventListener('click', () => mailShow('compose'));
-  document.getElementById('mail-compose-cancel-btn').addEventListener('click', () => mailShow('inbox'));
+  document.getElementById('mail-compose-cancel-btn').addEventListener('click', () => mailShow(selectedMailId ? 'message' : 'inbox'));
 
   document.getElementById('mail-compose-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -669,6 +849,7 @@
       document.getElementById('mail-compose-to').value = '';
       document.getElementById('mail-compose-subject').value = '';
       document.getElementById('mail-compose-body').value = '';
+      selectedMailId = null;
       mailShow('inbox');
       loadMailInbox();
     } catch (err) {
@@ -937,11 +1118,12 @@
 
   els.signoutBtn.addEventListener('click', () => {
     localStorage.removeItem(TOKEN_KEY);
-    els.consoleCard.classList.add('hidden');
+    els.appShell.classList.add('hidden');
     document.getElementById('admin-card').classList.add('hidden');
     document.getElementById('twilio-card').classList.add('hidden');
     document.getElementById('mail-accounts-card').classList.add('hidden');
-    document.getElementById('main').classList.remove('wide');
+    document.getElementById('nav-admin').classList.add('hidden');
+    showPage('mail');
     els.authCard.classList.remove('hidden');
     els.authForm.reset();
     setMode('login');
