@@ -1,4 +1,5 @@
 ## 2026-09-05
+- SIP Phone NORTHSTAR: Phase 3 (call-state machine) marked shipped (sess-20260905-0720-ec33e7c5)
 - SIP Phone NORTHSTAR: Phase 2 (SDP support) marked shipped (sess-20260905-0720-ec33e7c5)
 
 - feat: CP-SIP-1244543543 — console screens for admins and users: a real "Change password"
