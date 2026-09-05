@@ -1,5 +1,24 @@
 ## 2026-09-05
 
+- docs: real Ansible-vs-Terraform provisioning report (founder real-time: the existing farthq.com
+  Nanode's own current page is "throwaway," so reuse that already-live, disposable box for
+  Stalwart instead of provisioning a fresh one — how do we command-and-control it from this dev
+  box, without writing custom automation software, without deep-diving "Emily federated
+  operations," fully automated, no manual login — "maybe we need terraform what do you think").
+  New `docs/STALWART_PROVISIONING_REPORT.md` recommends a narrow two-tool split rather than one
+  unified system: **Terraform** for Cloudflare DNS records only (farthq.com is already
+  Cloudflare-DNS-managed per `EMILY/docs/fable-prompts/dns-operations-northstar.md`, a real
+  token already on file), explicitly leaving the already-live Nanode itself OUT of Terraform
+  state (importing a live resource is real, risky, and unnecessary since it's not being
+  created/destroyed); **Ansible** for everything on the box itself (agentless, plain SSH,
+  `ansible-playbook` run non-interactively from this box or CI — the real, direct "yes, fully
+  automatable, no login required" answer). Named, not glossed over: the real missing pieces
+  before this can execute (the box's actual IP/hostname, and which of this sandbox's existing
+  SSH credentials — if any — already reach it) and why this isn't "Emily federated operations"
+  (that's a real, separate, deliberately-deferred multi-agent orchestration concept named
+  elsewhere in the monorepo, not a two-box SSH deploy). No Ansible/Terraform installed, no
+  playbook or `.tf` file written, nothing run against the real box — recommendation only.
+
 - docs: real Stalwart hosting decision (kanban CPMAIL-114/144, founder real-time multi-message
   thread weighing Linode vs. Google Cloud for the sovereign email server — cost via existing GCP
   credits vs. the optics of hosting "sovereign" infrastructure on Google, with a real, explicit
