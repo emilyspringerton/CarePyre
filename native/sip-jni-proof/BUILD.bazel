@@ -1,0 +1,70 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_java//java:defs.bzl", "java_test")
+
+# CP-OPS-1244 ("CP SIP PHONE SHOULD USE BAZEL"). Same real PARENA->C->shared-library->JNI chain
+# .github/workflows/ci.yml's own sip-jni-proof job already builds and runs via a raw gcc/javac/
+# java invocation -- this is that same, real build made hermetic (or as hermetic as
+# parena_runtime.h's own unconditional SDL2 dependency allows -- see :parena_runtime below) under
+# Bazel, not a parallel/second build path. CI keeps its own raw-command job as-is; migrating it
+# to call through Bazel instead is real, separate follow-up, not done here.
+
+# parena_runtime.c/.h -- copied verbatim from PARENA/runtime/ (see README.md's own "Regenerate
+# the same way" note). Real, honest, non-hermetic prerequisite carried over unchanged from the
+# existing gcc-based build: parena_runtime.h unconditionally #includes <SDL2/SDL.h>/
+# <SDL2/SDL_ttf.h> (stdlib/sdl2.prn is "built in, same tier as core"), so this cc_library needs
+# libsdl2-dev/libsdl2-ttf-dev's headers already present on PATH's default include search
+# (Bazel's autoconfigured local cc toolchain falls through to /usr/include, same as PARENA's own
+# Bazel setup already relies on for this identical header) -- `sudo apt-get install -y
+# libsdl2-dev libsdl2-ttf-dev` on a CI runner, already installed in this dev sandbox.
+cc_library(
+    name = "parena_runtime",
+    srcs = ["parena_runtime.c"],
+    hdrs = ["parena_runtime.h"],
+    includes = ["."],
+)
+
+# sip_message_gen.c -- real PARENA-generated C (see README.md's own regeneration command).
+cc_library(
+    name = "sip_message_gen",
+    srcs = ["sip_message_gen.c"],
+    deps = [":parena_runtime"],
+)
+
+# libcarepyre_sip.so -- the real JNI shim (carepyre_sip_jni.c), linked against the generated SIP
+# code and a real, hermetic jni.h/jni_md.h (@bazel_tools//tools/jdk:jni, resolved against
+# .bazelrc's own `--java_runtime_version=remotejdk_21` -- no system JDK needed, checked live in
+# this sandbox, which has no javac on PATH at all). Real, deliberate include-order note:
+# carepyre_sip_jni.c itself must #include "parena_runtime.h" before <jni.h> -- a source-level
+# ordering this BUILD file's own dep graph doesn't affect; see the file's own header comment and
+# README.md's "Real, honest note on include order".
+cc_binary(
+    name = "libcarepyre_sip.so",
+    srcs = ["carepyre_sip_jni.c"],
+    linkshared = True,
+    linkopts = ["-lm"],
+    deps = [
+        ":parena_runtime",
+        ":sip_message_gen",
+        "@bazel_tools//tools/jdk:jni",
+    ],
+)
+
+# SipNative.java -- the real Java side (native method declaration + the smoke test itself, see
+# its own header comment). java_test over a plain sh_test because rules_java's own toolchain
+# already gives us a real, hermetic `java`/`javac` (matching .bazelrc's remotejdk_21) without
+# hand-resolving one in a shell script.
+java_test(
+    name = "jni_smoke_test",
+    srcs = ["SipNative.java"],
+    test_class = "org.carepyre.sip.SipNative",
+    main_class = "org.carepyre.sip.SipNative",
+    use_testrunner = False,
+    data = [":libcarepyre_sip.so"],
+    # System.loadLibrary("carepyre_sip") searches java.library.path for
+    # libcarepyre_sip.so -- pointing it at this package's own runfiles
+    # directory (where the :libcarepyre_sip.so data dep actually lands,
+    # verified live rather than assumed) is the real, minimal fix; no
+    # $(location) dirname trick needed since the java_test's own runtime
+    # cwd is the runfiles root.
+    jvm_flags = ["-Djava.library.path=native/sip-jni-proof"],
+)

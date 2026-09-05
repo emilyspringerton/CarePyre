@@ -117,6 +117,14 @@ linked C, since this is a JVM host, not a C one.
   its own feature-test macros; including a JDK header first locks glibc into a narrower default
   first, breaking `struct addrinfo`/`getaddrinfo` compilation) — see the proof's own README. This
   is the load-bearing "java ffi escape hatch" link SIP-0001 named, now proven, not assumed.
+  **Bazel'd (CP-OPS-1244)**: `native/sip-jni-proof/BUILD.bazel` builds `libcarepyre_sip.so`
+  (`bazel build //native/sip-jni-proof:libcarepyre_sip.so`) and runs the same real Java smoke
+  test hermetically (`bazel test //native/sip-jni-proof:jni_smoke_test`), including a real,
+  hermetic jni.h/jni_md.h via `@bazel_tools//tools/jdk:jni` + `.bazelrc`'s
+  `--java_runtime_version=remotejdk_21` — no system JDK required, verified live in a sandbox with
+  no `javac` on PATH at all. `.github/workflows/ci.yml`'s `sip-jni-proof` job now runs through
+  Bazel too (`bazel-contrib/setup-bazel`), replacing its own prior raw gcc/javac/java
+  invocation — same real build, same libsdl2-dev prerequisite, not a parallel path.
 - **Phase 2 — SDP body support in `message.prn`** (or a new sibling `sip/sdp.prn`), the real
   blocking gap for negotiating a two-way audio session.
 - **Phase 3 — a minimal transaction layer**: real INVITE state (calling → ringing → established →

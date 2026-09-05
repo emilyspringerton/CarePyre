@@ -12,52 +12,42 @@ permissions:
 
 jobs:
   sip-jni-proof:
-    name: SIP JNI proof (build libcarepyre_sip.so, run the real Java smoke test)
+    name: SIP JNI proof (Bazel — build libcarepyre_sip.so, run the real Java smoke test)
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
 
-      # ubuntu-latest ships gcc already; the one real dependency this job
-      # needs is a JDK that carries jni.h (temurin's layout matches the
-      # real, verified-live include layout: $JAVA_HOME/include/jni.h +
-      # $JAVA_HOME/include/linux/jni_md.h -- same shape
-      # /home/fatbaby/EINHORN_SURVIVAL/jdk25 already proved locally).
-      - uses: actions/setup-java@v4
+      # CP-OPS-1244 ("CP SIP PHONE SHOULD USE BAZEL") -- real Bazel build, replacing the raw
+      # gcc/javac/java invocation this job used before. Same real hermetic JDK 21
+      # (@bazel_tools//tools/jdk:jni + .bazelrc's own --java_runtime_version=remotejdk_21,
+      # verified live against this exact repo before adopting) resolves jni.h/jni_md.h -- no
+      # actions/setup-java step needed any more, Bazel fetches its own.
+      - uses: bazel-contrib/setup-bazel@0.15.0
         with:
-          distribution: temurin
-          java-version: "21"
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}
+          repository-cache: true
 
       # parena_runtime.h unconditionally includes <SDL2/SDL.h>/<SDL2/SDL_ttf.h>
       # (stdlib/sdl2.prn is "built in, same tier as core" per PARENA's own
       # STDLIB.md), so ANY build of this runtime needs these dev headers,
       # not just ones that happen to call into sdl2.prn -- same real gotcha
-      # PARENA's own ci.yml already documents and fixes the same way.
+      # PARENA's own ci.yml already documents and fixes the same way. Bazel's
+      # autoconfigured local cc toolchain falls through to /usr/include for
+      # this, same as PARENA's own Bazel setup already relies on.
       - name: Install SDL2 + SDL2_ttf dev headers (CI runner -- apt is normal here)
         run: sudo apt-get update && sudo apt-get install -y libsdl2-dev libsdl2-ttf-dev
 
-      # Real, deliberate include order (see native/sip-jni-proof/README.md's
-      # own "found live" note): parena_runtime.h sets its own feature-test
-      # macros and must be included before <jni.h> in carepyre_sip_jni.c, or
-      # glibc locks into a narrower default first and struct addrinfo/
-      # getaddrinfo fail to compile.
-      - name: Build libcarepyre_sip.so
-        working-directory: native/sip-jni-proof
-        run: |
-          gcc -std=c99 -Wall -Wextra -fPIC -shared \
-            -I "${JAVA_HOME}/include" -I "${JAVA_HOME}/include/linux" \
-            carepyre_sip_jni.c sip_message_gen.c parena_runtime.c \
-            -o libcarepyre_sip.so -lm
+      - name: Build libcarepyre_sip.so (bazel build)
+        run: bazel build //native/sip-jni-proof:libcarepyre_sip.so
 
       # SipNative.main() builds a real SIP REGISTER through the JNI bridge
       # and asserts its RFC 3261 shape -- this IS the real Phase 1 proof
       # (SIP_PHONE_ANDROID_NORTHSTAR.md), not just "did it compile."
-      - name: Compile + run the real JNI smoke test
-        working-directory: native/sip-jni-proof
-        run: |
-          javac -d classes SipNative.java
-          java -Djava.library.path=. -cp classes org.carepyre.sip.SipNative
+      - name: Run the real JNI smoke test (bazel test)
+        run: bazel test //native/sip-jni-proof:jni_smoke_test --test_output=all
 
       # CP-SIP-123 ("CarePyre SIP phone should have artifacts") -- the real
       # build output, downloadable from the run's own Summary page without
@@ -67,7 +57,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: libcarepyre_sip-${{ github.run_number }}-${{ github.sha }}
-          path: native/sip-jni-proof/libcarepyre_sip.so
+          path: bazel-bin/native/sip-jni-proof/libcarepyre_sip.so
           if-no-files-found: error
 
   # CP-SIP-9911 ("Android APK should be in releases") -- a real, minimal, installable Android

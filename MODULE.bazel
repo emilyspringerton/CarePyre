@@ -1,0 +1,29 @@
+"""CarePyre — Bazel build entry point.
+
+Kanban CP-OPS-1244 ("CP SIP PHONE SHOULD USE BAZEL"). Covers the real, hermetic-buildable half of
+this repo: native/sip-jni-proof/ (PARENA-generated C -> libcarepyre_sip.so -> a real JNI smoke
+test against it), same rules_cc + PARENA-style cc_library layout PARENA's own MODULE.bazel/
+src/BUILD.bazel already establish (see PARENA/src/BUILD.bazel, PARENA/runtime/BUILD.bazel).
+
+rules_java is a new addition beyond PARENA's own Bazel setup, needed for exactly one real thing:
+`@bazel_tools//tools/jdk:jni` — Bazel's own built-in cc_library exposing jni.h/jni_md.h from
+whatever Java runtime toolchain Bazel resolves, so the JNI shim's `#include <jni.h>` compiles
+hermetically (via .bazelrc's `--java_runtime_version=remotejdk_21`) without needing a
+system-installed JDK — checked live in this sandbox (which has no `javac`/`jni.h` outside a
+manually-unpacked `EINHORN_SURVIVAL/jdk25`) before committing to this, not assumed to work.
+
+android/ (the Gradle project) is deliberately NOT brought under Bazel here — rules_android needs
+a real, configured Android SDK/NDK, and this sandbox's own `dl.google.com` blocker (see
+docs/SIP_PHONE_ANDROID_NORTHSTAR.md gap #1) already made a full local Android toolchain
+impossible to verify directly; Gradle stays the Android build's own real, CI-proven path
+(.github/workflows/ci.yml's android-app job) rather than guessing at an unverified Bazel/Android
+setup. Real, honest, not a silent gap — named here and in CHANGELOG.md.
+"""
+
+module(
+    name = "carepyre",
+    version = "0.0.0",
+)
+
+bazel_dep(name = "rules_cc", version = "0.2.17")
+bazel_dep(name = "rules_java", version = "9.1.0")

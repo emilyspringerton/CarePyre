@@ -1,0 +1,19 @@
+# CarePyre's Bazel config.
+#
+# --java_runtime_version=remotejdk_21: matches .github/workflows/ci.yml's own
+# `setup-java` (temurin 21) for the sip-jni-proof job -- resolves a real,
+# hermetic JDK 21 (no local install needed) so @bazel_tools//tools/jdk:jni
+# (native/sip-jni-proof/BUILD.bazel's real jni.h/jni_md.h source) and the
+# java_test both have a real Java toolchain, without depending on whatever
+# JDK (if any) happens to be on this machine's own PATH/JAVA_HOME. Verified
+# live in this sandbox (which has no javac on PATH at all) before adopting.
+build --java_runtime_version=remotejdk_21
+
+# Same C99 + warnings bar every other native build in this monorepo already
+# holds to (matches PARENA's own .bazelrc, and the exact gcc flags
+# native/sip-jni-proof/README.md and .github/workflows/ci.yml already use
+# for this same code) -- set globally so plain `bazel build //...` gets it,
+# not just the targets that opt in explicitly.
+build --conlyopt=-std=c99
+build --copt=-Wall
+build --copt=-Wextra

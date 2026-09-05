@@ -3,3 +3,8 @@
 native/**/*.so
 native/**/classes/
 native/**/*.class
+
+# Bazel (CP-OPS-1244) — bazel-bin/-out/-testlogs/-CarePyre are convenience symlinks into
+# Bazel's own cache dir, not real repo content. .bazelversion/MODULE.bazel.lock ARE committed
+# (matching PARENA's own convention) — real reproducibility lockfiles, not local state.
+/bazel-*
