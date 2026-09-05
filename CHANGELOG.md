@@ -1,4 +1,5 @@
 ## 2026-09-05
+- SIP Phone NORTHSTAR: DTMF signaling (RFC 4733) shipped as the first half of Phase 4 (sess-20260905-0720-ec33e7c5)
 - New SIP_QR_ONBOARDING_NORTHSTAR.md: Phase 1 (backend payload) shipped, Phase 2 (QR rendering) and Phase 3 (Android camera scan) scoped for next iteration (sess-20260905-0720-ec33e7c5)
 - SIP Phone NORTHSTAR: Phase 3 (call-state machine) marked shipped (sess-20260905-0720-ec33e7c5)
 - SIP Phone NORTHSTAR: Phase 2 (SDP support) marked shipped (sess-20260905-0720-ec33e7c5)
