@@ -1,4 +1,5 @@
 ## 2026-09-05
+- Account page: mail encryption-at-rest status + paste-a-key UI. (sess-20260905-0720-ec33e7c5)
 - Admin Users table: create a mailbox tied to a user (auto-connects their webmail) or reveal a linked mailbox's password. (sess-20260905-0720-ec33e7c5)
 - Console visual refresh: sidebar-nav app shell (Mail/SIP Phone/Account/Admin) replacing the accordion stack, responsive two-pane mail view (list + reading pane, collapsing below 760px). (sess-20260905-0720-ec33e7c5)
 - Diagnosed and partially fixed Gmail delivery failure: RDNS corrected, Linode support ticket filed for outbound port 25 unblock (sess-20260905-0720-ec33e7c5)
