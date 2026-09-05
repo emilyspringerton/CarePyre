@@ -125,8 +125,27 @@ linked C, since this is a JVM host, not a C one.
   no `javac` on PATH at all. `.github/workflows/ci.yml`'s `sip-jni-proof` job now runs through
   Bazel too (`bazel-contrib/setup-bazel`), replacing its own prior raw gcc/javac/java
   invocation — same real build, same libsdl2-dev prerequisite, not a parallel path.
-- **Phase 2 — SDP body support in `message.prn`** (or a new sibling `sip/sdp.prn`), the real
-  blocking gap for negotiating a two-way audio session.
+- **Phase 2 — SHIPPED.** Real, tested `PARENA/stdlib/sip/sdp.prn` (a new sibling module, not
+  bolted onto `message.prn` — SDP is RFC 4566, a real, separate spec layered on top of SIP, not
+  part of it): `parse-sdp` reads the real session-level fields (`v=`/`o=`/`s=`/`c=`) plus exactly
+  one real media block (`m=audio ...` + its own `a=rtpmap:` codec line) into an `SdpMessage`
+  struct; `build-sdp-offer` emits the real inverse for an outbound INVITE. Real, honest v0
+  boundary, named in the file itself: exactly one media block (the type itself is `SdpMedia`, not
+  `(Vec SdpMedia)` — a real multi-stream/multi-codec offer is separate, unbuilt work), no IPv6, no
+  `b=`/`k=`/other `a=` attributes. `codec-pcmu`/`codec-pcma` export the real RFC 3551 static
+  payload-type constants (0/8) Phase 4 needs. **Real, genuine compiler bug found and worked
+  around, not designed in advance**: a `match` returning a raw scalar (not a struct) with one
+  literal-numeric arm and one `Ok`-bound arm failed to compile ("incompatible types when assigning
+  to type 'double' from type 'void *'") — the match's own result-type inference picked `double` as
+  a generic numeric default from the bare `0` literal, then choked assigning the still-boxed
+  `void*` payload into it. Fixed with a new `unbox-i32` helper, the same real class of fix
+  `regex/pcre.prn`'s own `unbox-bool`/`log/jsonl.prn`'s own `unbox-filehandle` already established
+  for exactly this "generic `void*` Result payload used in a typed scalar context" gap — `deref`
+  is the proven fix for a STRUCT payload, `unbox-*` is the proven fix for a scalar one. New `make
+  test-sip-sdp` target, 7 real assertions (session-level field parse, `m=`/`a=rtpmap` parse, a
+  real honest `MissingMediaLine` error for a body with no media, a real malformed-line error, and
+  a real built offer round-tripping back through the parser). `make test`: 345/345, zero
+  regressions. Full writeup: `PARENA/STDLIB.md`'s own "sip/sdp" section.
 - **Phase 3 — a minimal transaction layer**: real INVITE state (calling → ringing → established →
   terminated), enough to place and answer one real call, not the full RFC 3261 FSM.
 - **Phase 4 — G.711 codec + real RTP send/receive loop**, wired to Android's `AudioRecord`/
