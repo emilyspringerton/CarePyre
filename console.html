@@ -173,6 +173,52 @@
       </div>
     </details>
 
+    <!-- Mail (founder real-time, 2026-09-05: "minimal custom webmail in the console") -- real,
+         deliberately minimal v0: Inbox only, plain text only. Available to any logged-in user,
+         not admin-gated (real, per-user feature, distinct from the admin-only Mail accounts
+         provisioning panel below). A user connects their OWN real Stalwart mailbox credential
+         once per browser session -- IDUNA_PRO never persists it, see webmail.go's own header
+         comment. -->
+    <details class="section" open>
+      <summary>Mail</summary>
+      <div class="body">
+        <div id="mail-connect-wrap">
+          <p class="sub" style="margin:0 0 0.6rem;">Connect your CarePyre mailbox to read and send mail here.</p>
+          <div id="mail-connect-error" class="error hidden"></div>
+          <form id="mail-connect-form">
+            <label for="mail-connect-email">Email</label>
+            <input id="mail-connect-email" type="email" placeholder="you@carepyre.org" required>
+            <label for="mail-connect-password">Password</label>
+            <input id="mail-connect-password" type="password" required>
+            <button type="submit">Connect</button>
+          </form>
+        </div>
+        <div id="mail-inbox-wrap" class="hidden">
+          <p class="sub" style="margin:0 0 0.6rem;">Connected as <span id="mail-connected-email"></span></p>
+          <button type="button" id="mail-compose-btn">Compose</button>
+          <button type="button" id="mail-refresh-btn">Refresh</button>
+          <div id="mail-list" style="margin-top:0.8rem;"></div>
+        </div>
+        <div id="mail-message-view" class="hidden" style="margin-top:0.8rem;">
+          <button type="button" id="mail-back-btn">&larr; Back to inbox</button>
+          <div id="mail-message-body" style="margin-top:0.6rem;"></div>
+        </div>
+        <div id="mail-compose-view" class="hidden" style="margin-top:0.8rem;">
+          <div id="mail-send-error" class="error hidden"></div>
+          <form id="mail-compose-form">
+            <label for="mail-compose-to">To</label>
+            <input id="mail-compose-to" type="email" required>
+            <label for="mail-compose-subject">Subject</label>
+            <input id="mail-compose-subject" type="text">
+            <label for="mail-compose-body">Message</label>
+            <textarea id="mail-compose-body" rows="6" style="width:100%;font-family:inherit;"></textarea>
+            <button type="submit">Send</button>
+            <button type="button" id="mail-compose-cancel-btn">Cancel</button>
+          </form>
+        </div>
+      </div>
+    </details>
+
     <!-- Change password -->
     <details class="section">
       <summary>Change password</summary>
@@ -410,6 +456,7 @@
     els.consoleCard.classList.remove('hidden');
 
     loadMySipAccount();
+    initMail();
 
     const isAdmin = perms.includes('users.admin');
     const isTwilioAdmin = perms.includes('twilio.admin');
@@ -487,6 +534,148 @@
       input.placeholder = 'Could not reach the console API: ' + err.message;
     }
   }
+
+  // ---- Mail (founder real-time, 2026-09-05: "minimal custom webmail in the console") ----
+  function mailShow(view) {
+    document.getElementById('mail-connect-wrap').classList.toggle('hidden', view !== 'connect');
+    document.getElementById('mail-inbox-wrap').classList.toggle('hidden', view !== 'inbox');
+    document.getElementById('mail-message-view').classList.toggle('hidden', view !== 'message');
+    document.getElementById('mail-compose-view').classList.toggle('hidden', view !== 'compose');
+  }
+
+  async function initMail() {
+    try {
+      const res = await fetch(API_BASE + '/mail/status', { headers: authHeaders() });
+      const data = await res.json().catch(() => ({}));
+      if (data.connected) {
+        document.getElementById('mail-connected-email').textContent = data.email;
+        mailShow('inbox');
+        loadMailInbox();
+      } else {
+        mailShow('connect');
+      }
+    } catch (err) {
+      mailShow('connect');
+    }
+  }
+
+  document.getElementById('mail-connect-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('mail-connect-email').value.trim();
+    const password = document.getElementById('mail-connect-password').value;
+    const errEl = document.getElementById('mail-connect-error');
+    errEl.classList.add('hidden');
+    try {
+      const res = await fetch(API_BASE + '/mail/connect', {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        errEl.textContent = data.error || ('HTTP ' + res.status);
+        errEl.classList.remove('hidden');
+        return;
+      }
+      document.getElementById('mail-connect-password').value = '';
+      document.getElementById('mail-connected-email').textContent = data.email;
+      mailShow('inbox');
+      loadMailInbox();
+    } catch (err) {
+      errEl.textContent = 'Could not reach the console API: ' + err.message;
+      errEl.classList.remove('hidden');
+    }
+  });
+
+  async function loadMailInbox() {
+    const list = document.getElementById('mail-list');
+    list.innerHTML = '<p class="sub" style="margin:0;">Loading…</p>';
+    try {
+      const res = await fetch(API_BASE + '/mail/messages', { headers: authHeaders() });
+      const data = await res.json().catch(() => ([]));
+      if (!res.ok) {
+        list.innerHTML = '<p class="error" style="margin:0;">' + esc((data && data.error) || ('HTTP ' + res.status)) + '</p>';
+        return;
+      }
+      if (!data || data.length === 0) {
+        list.innerHTML = '<p class="sub" style="margin:0;">No messages.</p>';
+        return;
+      }
+      list.innerHTML = '';
+      for (const m of data) {
+        const row = document.createElement('div');
+        row.className = 'id-row';
+        row.style.cursor = 'pointer';
+        row.style.borderBottom = '1px solid var(--border)';
+        row.style.padding = '0.5rem 0';
+        const fromName = (m.from && m.from[0] && (m.from[0].name || m.from[0].email)) || '(unknown)';
+        row.innerHTML =
+          '<span class="k" style="' + (m.unread ? 'font-weight:700;' : '') + '">' + esc(fromName) + '</span>' +
+          '<span class="v">' + esc(m.subject || '(no subject)') + '</span>';
+        row.addEventListener('click', () => loadMailMessage(m.id));
+        list.appendChild(row);
+      }
+    } catch (err) {
+      list.innerHTML = '<p class="error" style="margin:0;">Could not reach the console API: ' + esc(err.message) + '</p>';
+    }
+  }
+
+  async function loadMailMessage(id) {
+    mailShow('message');
+    const body = document.getElementById('mail-message-body');
+    body.innerHTML = '<p class="sub" style="margin:0;">Loading…</p>';
+    try {
+      const res = await fetch(API_BASE + '/mail/messages/' + encodeURIComponent(id), { headers: authHeaders() });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        body.innerHTML = '<p class="error" style="margin:0;">' + esc(data.error || ('HTTP ' + res.status)) + '</p>';
+        return;
+      }
+      const fromName = (data.from && data.from[0] && (data.from[0].name || data.from[0].email)) || '(unknown)';
+      body.innerHTML =
+        '<div class="id-row"><span class="k">From</span><span class="v">' + esc(fromName) + '</span></div>' +
+        '<div class="id-row"><span class="k">Subject</span><span class="v">' + esc(data.subject || '(no subject)') + '</span></div>' +
+        '<div class="id-row"><span class="k">Received</span><span class="v">' + esc(data.receivedAt || '') + '</span></div>' +
+        '<pre style="white-space:pre-wrap;font-family:inherit;margin-top:0.8rem;">' + esc(data.body || '') + '</pre>';
+    } catch (err) {
+      body.innerHTML = '<p class="error" style="margin:0;">Could not reach the console API: ' + esc(err.message) + '</p>';
+    }
+  }
+
+  document.getElementById('mail-back-btn').addEventListener('click', () => mailShow('inbox'));
+  document.getElementById('mail-refresh-btn').addEventListener('click', loadMailInbox);
+  document.getElementById('mail-compose-btn').addEventListener('click', () => mailShow('compose'));
+  document.getElementById('mail-compose-cancel-btn').addEventListener('click', () => mailShow('inbox'));
+
+  document.getElementById('mail-compose-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const to = document.getElementById('mail-compose-to').value.trim();
+    const subject = document.getElementById('mail-compose-subject').value.trim();
+    const body = document.getElementById('mail-compose-body').value;
+    const errEl = document.getElementById('mail-send-error');
+    errEl.classList.add('hidden');
+    try {
+      const res = await fetch(API_BASE + '/mail/send', {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+        body: JSON.stringify({ to, subject, body }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        errEl.textContent = data.error || ('HTTP ' + res.status);
+        errEl.classList.remove('hidden');
+        return;
+      }
+      document.getElementById('mail-compose-to').value = '';
+      document.getElementById('mail-compose-subject').value = '';
+      document.getElementById('mail-compose-body').value = '';
+      mailShow('inbox');
+      loadMailInbox();
+    } catch (err) {
+      errEl.textContent = 'Could not reach the console API: ' + err.message;
+      errEl.classList.remove('hidden');
+    }
+  });
 
   function esc(s) {
     const d = document.createElement('div');
