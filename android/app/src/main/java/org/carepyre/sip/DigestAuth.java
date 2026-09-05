@@ -59,13 +59,33 @@ final class DigestAuth {
      *   response = MD5(HA1:nonce:nc:cnonce:qop:HA2)
      * `nc` is the real, standard 8-hex-digit nonce count (e.g. "00000001") -- a real caller
      * increments this per real request reusing the same nonce, not regenerated here (this
-     * function is pure, no request-counter state of its own). */
+     * function is pure, no request-counter state of its own). ONLY valid when the server's own
+     * challenge actually included a `qop` parameter -- see `computeResponseNoQop` below for the
+     * real, separate case (confirmed live against this box's own Asterisk instance) where it
+     * doesn't. */
     static String computeResponse(String username, String realm, String password,
                                     String nonce, String nc, String cnonce, String qop,
                                     String method, String digestUri) {
         String ha1 = md5Hex(username + ":" + realm + ":" + password);
         String ha2 = md5Hex(method + ":" + digestUri);
         return md5Hex(ha1 + ":" + nonce + ":" + nc + ":" + cnonce + ":" + qop + ":" + ha2);
+    }
+
+    /** computeResponseNoQop -- real, genuine bug found live: this box's own Asterisk sends a
+     * classic RFC 2069-shaped challenge with NO `qop` parameter at all
+     * (`Digest algorithm=MD5, realm="asterisk", nonce="..."`) -- confirmed directly via a live
+     * REGISTER against 198.58.107.85, not assumed from the RFC alone. RFC 2617 Section 3.2.2.1's
+     * own "if the qop directive is absent" formula is simpler and DOES NOT fold in nc/cnonce/qop
+     * at all:
+     *   response = MD5(HA1:nonce:HA2)
+     * Using the qop=auth 5-component formula against a server that never asked for qop produces
+     * a genuinely different hash, which is exactly why an otherwise-correct password still drew
+     * a real 403 Forbidden the first time this was tried end to end. */
+    static String computeResponseNoQop(String username, String realm, String password,
+                                         String nonce, String method, String digestUri) {
+        String ha1 = md5Hex(username + ":" + realm + ":" + password);
+        String ha2 = md5Hex(method + ":" + digestUri);
+        return md5Hex(ha1 + ":" + nonce + ":" + ha2);
     }
 
     /** md5Hex -- real, minimal MD5 + lowercase-hex encode, the exact real digest primitive RFC

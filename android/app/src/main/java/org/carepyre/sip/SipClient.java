@@ -113,16 +113,29 @@ final class SipClient {
                 cb.onResult(false, "Challenge header was missing realm/nonce: " + challengeHeader);
                 return;
             }
-            String qop = ch.containsKey("qop") ? ch.get("qop") : "auth";
-            String cnonce = randomHex(8);
-            String nc = "00000001";
+            // Real, genuine bug found live against this box's own Asterisk: its own challenge
+            // has NO qop parameter at all (confirmed directly, not assumed from the RFC) --
+            // ch.containsKey("qop") is the real branch point, not ch.getOrDefault("qop", "auth")
+            // (the earlier, wrong version, which silently forced the qop=auth 5-component
+            // formula onto a server that never asked for it, producing a hash that could never
+            // match regardless of password correctness).
             String digestUri = "sip:" + server;
-            String response = DigestAuth.computeResponse(
-                    extension, realm, password, nonce, nc, cnonce, qop, "REGISTER", digestUri);
-
-            String authHeader = "Digest username=\"" + extension + "\", realm=\"" + realm
-                    + "\", nonce=\"" + nonce + "\", uri=\"" + digestUri + "\", response=\"" + response
-                    + "\", qop=" + qop + ", nc=" + nc + ", cnonce=\"" + cnonce + "\"";
+            String authHeader;
+            if (ch.containsKey("qop")) {
+                String qop = ch.get("qop");
+                String cnonce = randomHex(8);
+                String nc = "00000001";
+                String response = DigestAuth.computeResponse(
+                        extension, realm, password, nonce, nc, cnonce, qop, "REGISTER", digestUri);
+                authHeader = "Digest username=\"" + extension + "\", realm=\"" + realm
+                        + "\", nonce=\"" + nonce + "\", uri=\"" + digestUri + "\", response=\"" + response
+                        + "\", qop=" + qop + ", nc=" + nc + ", cnonce=\"" + cnonce + "\"";
+            } else {
+                String response = DigestAuth.computeResponseNoQop(
+                        extension, realm, password, nonce, "REGISTER", digestUri);
+                authHeader = "Digest username=\"" + extension + "\", realm=\"" + realm
+                        + "\", nonce=\"" + nonce + "\", uri=\"" + digestUri + "\", response=\"" + response + "\"";
+            }
 
             cseq++;
             String req2 = buildRegister(localIp, localPort, fromTag, callId, cseq, authHeader);
