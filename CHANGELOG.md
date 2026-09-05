@@ -1,5 +1,13 @@
 ## 2026-09-05
 
+- feat: CP-SIP-1244543543 — console screens for admins and users: a real "Change password"
+  panel (new IDUNA_PRO `POST /api/v1/auth/change-password`, fixing a found-live gap where a
+  regular user had no self-service way to change their own password), a "Your SIP account"
+  panel (new `GET /api/v1/sip-accounts/me` — real metadata for a manually-provisioned Asterisk
+  extension, an honest "not assigned yet" when unset), and an admin-only panel (shown when
+  `users.admin` is in the signed-in identity's own permissions) to assign SIP extensions and
+  reset any user's password. Live-verified against the real, running deployment end to end.
+
 - feat: CarePyre Console (kanban CPP-124433/CPP-2144333) — real, standalone `console.html`
   (login + register + a real identity/permissions panel), backed by a real, separately-running
   [IDUNA_PRO](../IDUNA_PRO) instance. Architecture corrected live, mid-build, through a rapid
