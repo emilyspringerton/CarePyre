@@ -1,4 +1,5 @@
 ## 2026-09-05
+- Stalwart mail server fully configured: domain/DKIM/ACME/DNS live, 4 real accounts (brian+aliases, penelope, gary, emily) provisioned (sess-20260905-0720-ec33e7c5)
 - Stalwart mail server: hardened + installed live on 45.79.143.216 via Ansible, mail.carepyre.org DNS record created via Terraform (sess-20260905-0720-ec33e7c5)
 - Real Terraform (Cloudflare DNS) + Ansible (Stalwart install/config) for the new, separate mail server Linode -- ops/stalwart/ (sess-20260905-0720-ec33e7c5)
 - Real SIP call setup (INVITE/ACK/BYE), RTP audio (G.711), and RFC 4733 DTMF shipped in the Android SIP phone -- v0.23.0 (sess-20260905-0720-ec33e7c5)
