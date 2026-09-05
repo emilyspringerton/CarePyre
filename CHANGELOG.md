@@ -1,5 +1,25 @@
 ## 2026-09-05
 
+- feat: CarePyre Console (kanban CPP-124433/CPP-2144333) — real, standalone `console.html`
+  (login + register + a real identity/permissions panel), backed by a real, separately-running
+  [IDUNA_PRO](../IDUNA_PRO) instance. Architecture corrected live, mid-build, through a rapid
+  founder-direction sequence: "BUILD IT USING IDUNA PRO SOMEHOW" → "IDUNA PRO SHOULD BE
+  WHITELABLE BACK OFFICE" → "WE KEEP OPERATIONS USING OG IDUNA BUT WE NEED TO HAVE IDUNA PRO BE
+  BASICALLY A CONSOLE FOR THE PLATFORM THAT THE IDUNA PRO IS SUPPORTING" → "build it with iduna
+  pro not into iduna pro" — full reasoning in the new `docs/CAREPYRE_CONSOLE_NORTHSTAR.md`.
+  **IDUNA_PRO's own source is untouched** — this console talks to it purely through its
+  already-shipped REST API (`/api/v1/auth/register`, `/api/v1/auth/local`,
+  `/api/v1/identities/me`), reverse-proxied same-origin (`ops/nginx-carepyre.conf`'s new
+  `/console-api/` → IDUNA_PRO `:8081`) so no CORS handling was needed anywhere. EINHORN
+  operations keep running unchanged on the original IDUNA. Live-verified end to end against a
+  locally-booted `idunapro` instance (register → local-login → identities/me, all real, correct
+  JSON). Deploy queued (`sudo-queue/51-carepyre-console-idunapro-deploy.sh`, root MONOREPO repo)
+  — not yet run, needs real root. Apple #17921.
+
+- docs: CP-DOCS-12442 — real standalone `docs/ANDROID_APK_INSTALL.md` (full install steps,
+  what to expect, troubleshooting), linked from `README.md`'s own short pointer section
+  (previously inline-only content). Apple #17922.
+
 - feat: SIP phone Phase 6 (kanban CP-SIP-CONTINUE-123/CP-SIP-CONTINUE/CP-SIP-124455/CP-SIP-24332)
   — real WebView UI shipped. **Architecture decision** (resolves CP-SIP-CONTINUE's own "WE MAY
   NEED TO USE WEB TECHNOLOGIES FOR THE INTERFACE" question): a local, bundled HTML/CSS/JS UI
