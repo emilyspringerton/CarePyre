@@ -162,18 +162,23 @@
   .sidebar-footer .who button { all: unset; cursor: pointer; font-size: 0.72rem; color: var(--text-muted); }
   .sidebar-footer .who button:hover { color: var(--orange); }
 
-  .content { flex: 1; min-width: 0; padding: 2rem 2.2rem; overflow-y: auto; }
-  .content-inner { max-width: 960px; margin: 0 auto; }
+  .content { flex: 1; min-width: 0; padding: 2rem 2.2rem; display: flex; flex-direction: column; overflow: hidden; }
+  .content-inner { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .narrow-card { max-width: 640px; }
   .page { display: none; }
-  .page.active { display: block; }
+  .page.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
   .page h1 { font-size: 1.35rem; }
 
-  /* ---- Mail two-pane ---- */
-  .mail-layout { display: flex; gap: 1.4rem; align-items: flex-start; }
-  .mail-list-pane { width: 320px; flex: none; }
+  /* ---- Mail two-pane: a flush, full-height panel (no floating card chrome) filling the
+       remaining content area, matching the approved prototype's edge-to-edge composition. ---- */
+  .mail-layout {
+    display: flex; flex: 1; min-height: 0; align-items: stretch;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+  }
+  .mail-list-pane { width: 320px; flex: none; overflow-y: auto; padding: 1.3rem 1.2rem; border-right: 1px solid var(--border); }
   .mail-list-pane-header { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.5rem; }
   .mail-list-pane-header .actions { display: flex; gap: 0.4rem; }
-  .mail-reading-pane { flex: 1; min-width: 0; }
+  .mail-reading-pane { flex: 1; min-width: 0; overflow-y: auto; padding: 1.6rem 2rem; }
   .mail-row {
     width: 100%; text-align: left; border: none; background: transparent; cursor: pointer;
     border-radius: 10px; padding: 0.65rem 0.6rem; margin-bottom: 0.15rem; display: flex; gap: 0.6rem; align-items: flex-start;
@@ -288,62 +293,60 @@
 
       <!-- Mail page -->
       <div class="page active" id="page-mail">
-        <div class="card">
-          <div id="mail-connect-wrap">
-            <h1>Mail</h1>
-            <p class="sub">Connect your CarePyre mailbox to read and send mail here.</p>
-            <div id="mail-connect-error" class="error hidden"></div>
-            <form id="mail-connect-form">
-              <label for="mail-connect-email">Email</label>
-              <input id="mail-connect-email" type="email" placeholder="you@carepyre.org" required>
-              <label for="mail-connect-password">Password</label>
-              <input id="mail-connect-password" type="password" required>
-              <button type="submit">Connect</button>
-            </form>
+        <div id="mail-connect-wrap" class="card narrow-card">
+          <h1>Mail</h1>
+          <p class="sub">Connect your CarePyre mailbox to read and send mail here.</p>
+          <div id="mail-connect-error" class="error hidden"></div>
+          <form id="mail-connect-form">
+            <label for="mail-connect-email">Email</label>
+            <input id="mail-connect-email" type="email" placeholder="you@carepyre.org" required>
+            <label for="mail-connect-password">Password</label>
+            <input id="mail-connect-password" type="password" required>
+            <button type="submit">Connect</button>
+          </form>
+        </div>
+
+        <div id="mail-app-wrap" class="hidden mail-layout" data-view="list">
+          <div class="mail-list-pane">
+            <div class="mail-list-pane-header">
+              <h2 style="margin:0;">Inbox</h2>
+              <div class="actions">
+                <button type="button" id="mail-refresh-btn" class="small secondary" style="margin-top:0;">Refresh</button>
+                <button type="button" id="mail-compose-btn" class="small" style="margin-top:0;">Compose</button>
+              </div>
+            </div>
+            <p class="sub" style="margin:0 0 0.6rem;">Connected as <span id="mail-connected-email"></span></p>
+            <div id="mail-list"></div>
           </div>
 
-          <div id="mail-app-wrap" class="hidden mail-layout" data-view="list">
-            <div class="mail-list-pane">
-              <div class="mail-list-pane-header">
-                <h2 style="margin:0;">Inbox</h2>
-                <div class="actions">
-                  <button type="button" id="mail-refresh-btn" class="small secondary" style="margin-top:0;">Refresh</button>
-                  <button type="button" id="mail-compose-btn" class="small" style="margin-top:0;">Compose</button>
-                </div>
+          <div class="mail-reading-pane">
+            <button type="button" class="mail-back-btn" id="mail-back-btn">&larr; Back to inbox</button>
+
+            <div id="mail-empty-view">
+              <div class="mail-empty-state">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/></svg>
+                <div>Select a message to read it</div>
               </div>
-              <p class="sub" style="margin:0 0 0.6rem;">Connected as <span id="mail-connected-email"></span></p>
-              <div id="mail-list"></div>
             </div>
 
-            <div class="mail-reading-pane">
-              <button type="button" class="mail-back-btn" id="mail-back-btn">&larr; Back to inbox</button>
+            <div id="mail-message-view" class="hidden">
+              <div id="mail-message-body"></div>
+            </div>
 
-              <div id="mail-empty-view">
-                <div class="mail-empty-state">
-                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/></svg>
-                  <div>Select a message to read it</div>
+            <div id="mail-compose-view" class="hidden">
+              <div id="mail-send-error" class="error hidden"></div>
+              <form id="mail-compose-form">
+                <label for="mail-compose-to">To</label>
+                <input id="mail-compose-to" type="email" required>
+                <label for="mail-compose-subject">Subject</label>
+                <input id="mail-compose-subject" type="text">
+                <label for="mail-compose-body">Message</label>
+                <textarea id="mail-compose-body" rows="10"></textarea>
+                <div style="display:flex; gap:0.7rem;">
+                  <button type="submit" style="width:auto;">Send</button>
+                  <button type="button" id="mail-compose-cancel-btn" class="secondary" style="width:auto; margin-top:0;">Cancel</button>
                 </div>
-              </div>
-
-              <div id="mail-message-view" class="hidden">
-                <div id="mail-message-body"></div>
-              </div>
-
-              <div id="mail-compose-view" class="hidden">
-                <div id="mail-send-error" class="error hidden"></div>
-                <form id="mail-compose-form">
-                  <label for="mail-compose-to">To</label>
-                  <input id="mail-compose-to" type="email" required>
-                  <label for="mail-compose-subject">Subject</label>
-                  <input id="mail-compose-subject" type="text">
-                  <label for="mail-compose-body">Message</label>
-                  <textarea id="mail-compose-body" rows="10"></textarea>
-                  <div style="display:flex; gap:0.7rem;">
-                    <button type="submit" style="width:auto;">Send</button>
-                    <button type="button" id="mail-compose-cancel-btn" class="secondary" style="width:auto; margin-top:0;">Cancel</button>
-                  </div>
-                </form>
-              </div>
+              </form>
             </div>
           </div>
         </div>
@@ -351,7 +354,7 @@
 
       <!-- SIP Phone page -->
       <div class="page" id="page-sip">
-        <div class="card">
+        <div class="card narrow-card">
           <h1>Your SIP account</h1>
           <p class="sub">Metadata for registering a SIP client against this deployment.</p>
           <div id="sip-info-body">
@@ -362,7 +365,7 @@
 
       <!-- Account page -->
       <div class="page" id="page-account">
-        <div class="card">
+        <div class="card narrow-card">
           <h1>Account<span id="console-name"></span></h1>
           <p class="sub">Your CarePyre account, live from IDUNA_PRO.</p>
           <div class="id-row"><span class="k">Email</span><span class="v" id="c-email"></span></div>
