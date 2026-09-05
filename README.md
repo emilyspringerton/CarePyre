@@ -21,3 +21,25 @@ contact intake, not working infrastructure. See `docs/MESH_NETWORK_RESEARCH.md` 
 technical research on Layer 1 (Community Telecom Mesh).
 
 See `CLAUDE.md` for the fuller picture.
+
+## Installing the SIP phone APK (CP-SIP-129)
+
+The CarePyre SIP Phone Android app (`android/`, see `docs/SIP_PHONE_ANDROID_NORTHSTAR.md`) auto-
+publishes a debug APK to this repo's [Releases page](../../releases) on every green build of
+`main` — no separate build step needed to try it.
+
+1. Open the [latest release](../../releases/latest) and download `app-debug.apk` from its
+   Assets.
+2. This is an unsigned **debug** build (Android's own default debug key, not a production
+   release signature) — installing it means allowing "install from unknown sources"/"install
+   unknown apps" for whatever app you download it with (Files, Chrome, etc.), a real per-app
+   Android permission prompt on modern versions, not a device-wide setting.
+3. Open the downloaded `app-debug.apk` and confirm the install prompt.
+4. Launch **CarePyre SIP Phone**. It currently opens to a real, honest scaffold screen — see
+   `docs/SIP_PHONE_ANDROID_NORTHSTAR.md`'s own Phase 5/gap #2 for exactly what is and isn't
+   wired in yet (the native PARENA SIP/RTP core is proven on desktop via a real JNI test, but not
+   yet cross-compiled into this APK — no calls can be placed from this build).
+
+Every release also carries `libcarepyre_sip.so` — the real, standalone proof artifact from
+`native/sip-jni-proof/` (see that directory's own README) — which is a build output for that
+proof, not something the Android app itself uses yet.
