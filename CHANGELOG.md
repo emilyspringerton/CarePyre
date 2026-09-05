@@ -1,5 +1,27 @@
 ## 2026-09-05
 
+- build: CP-OPS-1244 ("CP SIP PHONE SHOULD USE BAZEL") — `native/sip-jni-proof/` now builds
+  hermetically under Bazel 9.2.0. `MODULE.bazel`/`.bazelrc`/`.bazelversion` added, matching
+  PARENA's own established `rules_cc` cc_library layout; `native/sip-jni-proof/BUILD.bazel`
+  builds `libcarepyre_sip.so` (`bazel build //native/sip-jni-proof:libcarepyre_sip.so`) and runs
+  the real Java JNI smoke test hermetically (`bazel test //native/sip-jni-proof:jni_smoke_test`)
+  via `@bazel_tools//tools/jdk:jni` against a hermetic `remotejdk_21` — no system JDK required,
+  verified live in a sandbox with no `javac` on `PATH` at all before adopting. Both
+  `bazel build //...` and `bazel test //...` pass clean. `.github/workflows/ci.yml`'s
+  `sip-jni-proof` job now runs through Bazel (`bazel-contrib/setup-bazel`), replacing its own
+  prior raw `gcc`/`javac`/`java` invocation — same real build, same `libsdl2-dev` prerequisite
+  carried over unchanged, artifact upload path updated to `bazel-bin/...`. `android/` (Gradle)
+  deliberately stays outside Bazel for now — `rules_android` needs a real Android SDK/NDK this
+  sandbox's own `dl.google.com` blocker (already documented) prevents verifying locally; named
+  explicitly rather than silently left out. Apple #17906.
+
+- docs: CP-SIP-129 ("README INSTRUCTIONS HOW TO INSTALL THE APK FROM THE RELEASES") — real
+  "Installing the SIP phone APK" section in `README.md`, pointing at the repo's own Releases page
+  (auto-published on every green `main` build per CP-SIP-124) and naming the exact real asset
+  (`app-debug.apk`, confirmed live against the actual `v0.4.0` release). Honest about current
+  limits — an unsigned debug build with no native SIP core wired in yet, no calls placeable —
+  rather than overselling what installing it gets you.
+
 - docs: real Ansible-vs-Terraform provisioning report (founder real-time: the existing farthq.com
   Nanode's own current page is "throwaway," so reuse that already-live, disposable box for
   Stalwart instead of provisioning a fresh one — how do we command-and-control it from this dev
