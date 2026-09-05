@@ -1,4 +1,5 @@
 ## 2026-09-05
+- Diagnosed and partially fixed Gmail delivery failure: RDNS corrected, Linode support ticket filed for outbound port 25 unblock (sess-20260905-0720-ec33e7c5)
 - Minimal webmail added to the console: connect your mailbox, read Inbox, compose/send (sess-20260905-0720-ec33e7c5)
 - SIP phone: register from a single console-generated provisioning URL (v0.36.0) (sess-20260905-0720-ec33e7c5)
 - Stalwart mail server fully configured: domain/DKIM/ACME/DNS live, 4 real accounts (brian+aliases, penelope, gary, emily) provisioned (sess-20260905-0720-ec33e7c5)
