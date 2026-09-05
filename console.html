@@ -397,13 +397,13 @@
       <div class="page" id="page-admin">
         <div class="card hidden" id="admin-card">
           <h2>Users</h2>
-          <p class="sub">Assign a SIP account or reset a password for any user.</p>
+          <p class="sub">Assign a SIP account, provision a mailbox, or reset a password for any user.</p>
           <div id="admin-error" class="error hidden"></div>
           <div id="admin-success" class="success-msg hidden"></div>
           <div style="overflow-x:auto;">
             <table>
               <thead>
-                <tr><th>UID</th><th>Email</th><th>Status</th><th>SIP extension</th><th></th></tr>
+                <tr><th>UID</th><th>Email</th><th>Status</th><th>SIP extension</th><th>Mailbox</th><th></th></tr>
               </thead>
               <tbody id="admin-users-body"></tbody>
             </table>
@@ -895,31 +895,49 @@
     }
   });
 
-  // ---- Admin: users, SIP assignment, password reset ----
+  // ---- Admin: users, SIP assignment, mailbox provisioning, password reset ----
+  // Mailbox column -- founder real-time, 2026-09-05: "after a user provisions their account an
+  // admin can provision an email for them and then the webmail for that user should just work
+  // we can still reveal their password for webmail use somehow." Reuses the existing, admin-only
+  // /api/v1/mail-accounts endpoint (now annotated with local_uid per mailbox by IDUNA_PRO) plus
+  // its new /api/v1/mail-accounts/{uid}/reveal-password route.
   async function loadAdminUsers() {
     const tbody = document.getElementById('admin-users-body');
     const adminError = document.getElementById('admin-error');
     adminError.classList.add('hidden');
     try {
-      const [usersRes, sipRes] = await Promise.all([
+      const [usersRes, sipRes, mailRes] = await Promise.all([
         fetch(API_BASE + '/users', { headers: authHeaders() }),
         fetch(API_BASE + '/sip-accounts', { headers: authHeaders() }),
+        fetch(API_BASE + '/mail-accounts', { headers: authHeaders() }),
       ]);
       if (!usersRes.ok) throw new Error('HTTP ' + usersRes.status + ' loading users');
       const users = await usersRes.json();
       const sipAccounts = sipRes.ok ? await sipRes.json() : [];
+      const mailAccounts = mailRes.ok ? await mailRes.json() : [];
       const sipByUID = {};
       for (const a of sipAccounts) sipByUID[a.local_uid] = a;
+      const mailByUID = {};
+      for (const a of (mailAccounts || [])) {
+        if (a.local_uid !== undefined && a.local_uid !== null) mailByUID[a.local_uid] = a;
+      }
 
       tbody.innerHTML = '';
       for (const u of users) {
         const tr = document.createElement('tr');
-        const existing = sipByUID[u.local_uid];
+        const existingSip = sipByUID[u.local_uid];
+        const existingMail = mailByUID[u.local_uid];
+        const mailCell = existingMail
+          ? '<span class="v" style="font-weight:600;">' + esc(existingMail.emailAddress) + '</span>' +
+            '<button type="button" class="small secondary reveal-mail-btn" data-uid="' + esc(u.local_uid) + '" style="margin-left:0.4rem;">Reveal password</button>'
+          : '<input type="text" placeholder="username" data-uid="' + esc(u.local_uid) + '" class="mail-username-input" style="display:inline-block;width:110px;margin:0 0.4rem 0 0;">' +
+            '<button type="button" class="small create-mail-btn" data-uid="' + esc(u.local_uid) + '">Create mailbox</button>';
         tr.innerHTML =
           '<td>' + esc(u.local_uid) + '</td>' +
           '<td>' + esc(u.email) + '</td>' +
           '<td>' + esc(u.status) + '</td>' +
-          '<td><input type="text" value="' + esc(existing ? existing.extension : '') + '" placeholder="e.g. 1000" data-uid="' + esc(u.local_uid) + '" class="ext-input"></td>' +
+          '<td><input type="text" value="' + esc(existingSip ? existingSip.extension : '') + '" placeholder="e.g. 1000" data-uid="' + esc(u.local_uid) + '" class="ext-input"></td>' +
+          '<td>' + mailCell + '</td>' +
           '<td class="row-actions">' +
             '<button class="small secondary assign-btn" data-uid="' + esc(u.local_uid) + '">Save</button>' +
             '<button class="small reset-pw-btn" data-uid="' + esc(u.local_uid) + '">Reset password</button>' +
@@ -933,9 +951,49 @@
       tbody.querySelectorAll('.reset-pw-btn').forEach(btn => {
         btn.addEventListener('click', () => adminResetPassword(btn.dataset.uid));
       });
+      tbody.querySelectorAll('.create-mail-btn').forEach(btn => {
+        btn.addEventListener('click', () => createMailboxForUser(btn.dataset.uid));
+      });
+      tbody.querySelectorAll('.reveal-mail-btn').forEach(btn => {
+        btn.addEventListener('click', () => revealMailboxPassword(btn.dataset.uid));
+      });
     } catch (err) {
       adminError.textContent = 'Could not load users: ' + err.message;
       adminError.classList.remove('hidden');
+    }
+  }
+
+  async function createMailboxForUser(uid) {
+    const input = document.querySelector('.mail-username-input[data-uid="' + uid + '"]');
+    const username = input.value.trim();
+    if (!username) { adminMessage(false, 'Enter a username before creating a mailbox.'); return; }
+    try {
+      const res = await fetch(API_BASE + '/mail-accounts', {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+        body: JSON.stringify({ username, local_uid: Number(uid) }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) { adminMessage(false, body.error || ('Could not create mailbox (HTTP ' + res.status + ').')); return; }
+      if (body.warning) {
+        adminMessage(false, body.warning);
+      } else {
+        adminMessage(true, 'Mailbox ' + body.email + ' created for user ' + uid + ' — their webmail will now just work.');
+      }
+      loadAdminUsers();
+    } catch (err) {
+      adminMessage(false, 'Could not reach the console API: ' + err.message);
+    }
+  }
+
+  async function revealMailboxPassword(uid) {
+    try {
+      const res = await fetch(API_BASE + '/mail-accounts/' + encodeURIComponent(uid) + '/reveal-password', { headers: authHeaders() });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) { adminMessage(false, body.error || ('Could not reveal password (HTTP ' + res.status + ').')); return; }
+      window.prompt('Password for ' + body.email + ' (copy it now, this is shown only once per click):', body.password);
+    } catch (err) {
+      adminMessage(false, 'Could not reach the console API: ' + err.message);
     }
   }
 
