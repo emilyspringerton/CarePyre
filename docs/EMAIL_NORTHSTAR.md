@@ -1,5 +1,12 @@
 # CarePyre Sovereign Email — Technical Research (Stalwart Mail Server, 2026-09-03)
 
+> **2026-09-05 correction**: this document's own "native integration for Cloudflare, Route 53,
+> and Google Cloud DNS" claim below did not hold up against the real, running Stalwart instance
+> (v0.16.20) — its actual "DNS Providers" feature is RFC2136 (TSIG) dynamic DNS only, not a
+> Cloudflare REST-API integration. Real DNS records are managed directly via Terraform instead.
+> See `docs/STALWART_RUNBOOK.md` and `ops/stalwart/README.md` for the real, live-verified
+> architecture. This document's own research is otherwise still a fair starting point.
+
 ## Where this comes from, and its real limit
 
 Kanban priority-queue card 213213123: "carepyre stalwart email northstar." Same honest-scoping

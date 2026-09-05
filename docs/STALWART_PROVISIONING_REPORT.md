@@ -1,5 +1,13 @@
 # Provisioning the Stalwart box: Ansible + Terraform, not custom automation
 
+> **2026-09-05 update**: this document's own "reuse the farthq.com Nanode" framing was
+> superseded the same day — the founder clarified a genuinely new, separate Linode is being used
+> instead (that box turned out to be the same shared box already running IDUNA/CarePyre/Asterisk,
+> a real co-location risk for a public mail server). The real Terraform/Ansible division of labor
+> below is unchanged either way and is now actually built and deployed — see
+> `docs/STALWART_RUNBOOK.md` for the real, executed steps and `ops/stalwart/README.md` for
+> current status.
+
 Founder real-time, 2026-09-05: there's already a real Linode Nanode running `farthq.com` whose
 current page is "throwaway, needs to be totally updated anyway" — real reuse candidate instead of
 provisioning a brand-new Linode instance (`docs/STALWART_HOSTING_DECISION.md`'s own earlier
