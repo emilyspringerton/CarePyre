@@ -1,0 +1,44 @@
+name: CarePyre CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  sip-jni-proof:
+    name: SIP JNI proof (build libcarepyre_sip.so, run the real Java smoke test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # ubuntu-latest ships gcc already; the one real dependency this job
+      # needs is a JDK that carries jni.h (temurin's layout matches the
+      # real, verified-live include layout: $JAVA_HOME/include/jni.h +
+      # $JAVA_HOME/include/linux/jni_md.h -- same shape
+      # /home/fatbaby/EINHORN_SURVIVAL/jdk25 already proved locally).
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      # Real, deliberate include order (see native/sip-jni-proof/README.md's
+      # own "found live" note): parena_runtime.h sets its own feature-test
+      # macros and must be included before <jni.h> in carepyre_sip_jni.c, or
+      # glibc locks into a narrower default first and struct addrinfo/
+      # getaddrinfo fail to compile.
+      - name: Build libcarepyre_sip.so
+        working-directory: native/sip-jni-proof
+        run: |
+          gcc -std=c99 -Wall -Wextra -fPIC -shared \
+            -I "${JAVA_HOME}/include" -I "${JAVA_HOME}/include/linux" \
+            carepyre_sip_jni.c sip_message_gen.c parena_runtime.c \
+            -o libcarepyre_sip.so -lm
+
+      # SipNative.main() builds a real SIP REGISTER through the JNI bridge
+      # and asserts its RFC 3261 shape -- this IS the real Phase 1 proof
+      # (SIP_PHONE_ANDROID_NORTHSTAR.md), not just "did it compile."
+      - name: Compile + run the real JNI smoke test
+        working-directory: native/sip-jni-proof
+        run: |
+          javac -d classes SipNative.java
+          java -Djava.library.path=. -cp classes org.carepyre.sip.SipNative
