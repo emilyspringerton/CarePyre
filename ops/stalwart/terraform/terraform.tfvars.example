@@ -1,0 +1,9 @@
+# Copy to terraform.tfvars (gitignored -- never commit real values) or export as
+# TF_VAR_stalwart_ipv4 / TF_VAR_cloudflare_api_token instead.
+
+# The new, separate Linode instance's public IPv4 -- fill in once it exists.
+stalwart_ipv4 = "203.0.113.10"
+
+# Real, existing token already on file at EMILY/var/cloudflare.md -- prefer
+# `export TF_VAR_cloudflare_api_token=$(...)` over writing it into this file at all.
+# cloudflare_api_token = "cfat_..."

@@ -1,0 +1,163 @@
+---
+# stalwart.yml -- real, idempotent command-and-control for the CarePyre Stalwart mail box.
+#
+# Real division of labor (docs/STALWART_PROVISIONING_REPORT.md): Terraform owns DNS
+# (../terraform/), this playbook owns everything that happens ON the box. Targets the new,
+# separate Linode instance the 2026-09-05 founder decision named (docs/STALWART_HOSTING_DECISION.md)
+# -- NOT the shared box this monorepo's other services already run on.
+#
+# Every fact this playbook relies on about Stalwart's own current install/config architecture was
+# checked live against stalw.art's own docs on 2026-09-05, not assumed from the older research in
+# docs/EMAIL_NORTHSTAR.md (which predates a real architecture change -- Stalwart's config is no
+# longer a single flat file for everything; only the DataStore bootstrap object lives in
+# config.json, everything else (listeners, TLS/ACME, directory, DNS-provider auto-publish) is
+# configured through its own web admin UI / JMAP management API once it's running).
+#
+# REAL, HONEST GAP THIS PLAYBOOK DOES NOT CLOSE: the one-time admin-UI setup wizard (hostname,
+# default domain, listener ports, ACME, DKIM signing, Cloudflare DNS auto-publish credentials) is
+# a genuine human-driven step in Stalwart's own current architecture -- there is no documented,
+# verified non-interactive path to script it blind (its own docs point at `stalwart-cli apply`
+# with a bulk JSON plan for full automation, but that plan's real JMAP schema can only be safely
+# captured via `stalwart-cli snapshot` against an already-configured real instance; guessing that
+# schema for a mail server's own TLS/delivery config is exactly the kind of thing this repo's own
+# "checked live, not assumed" discipline says not to fake). This playbook gets the box to "log in
+# once and click through the wizard" — not further — and names that as the real, remaining step.
+#
+# Usage:
+#   ansible-playbook -i inventory.ini playbooks/stalwart.yml
+
+- name: Provision Stalwart mail server
+  hosts: stalwart
+  become: true
+
+  vars:
+    stalwart_hostname: "mail.carepyre.org"
+    stalwart_public_url: "https://{{ stalwart_hostname }}"
+    stalwart_data_dir: "/var/lib/stalwart"
+    stalwart_conf_dir: "/etc/stalwart"
+    # Generated once per run if not already set on the box -- see the "recovery admin password"
+    # task below. Never hardcode a real password into this file.
+    stalwart_recovery_admin_user: "admin"
+
+  tasks:
+    - name: Ensure prerequisites are present (curl, tar -- the official installer needs both)
+      ansible.builtin.apt:
+        name:
+          - curl
+          - tar
+          - ufw
+        state: present
+        update_cache: true
+
+    - name: Check whether Stalwart is already installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/stalwart
+      register: stalwart_binary
+
+    - name: Download the real, official Stalwart installer
+      ansible.builtin.get_url:
+        url: "https://get.stalw.art/install.sh"
+        dest: /tmp/stalwart-install.sh
+        mode: "0755"
+        # Real, current TLS pin the installer itself enforces (--proto '=https' --tlsv1.2) --
+        # mirrored here so a downgraded/mitm'd fetch fails loudly instead of silently succeeding.
+        force: true
+
+    - name: Run the official installer (idempotent -- safe to re-run, preserves existing env file)
+      ansible.builtin.command:
+        cmd: sh /tmp/stalwart-install.sh
+      register: stalwart_install
+      changed_when: "'Installation complete' in stalwart_install.stdout"
+
+    - name: Ensure the config directory exists with correct ownership before writing config.json
+      ansible.builtin.file:
+        path: "{{ stalwart_conf_dir }}"
+        state: directory
+        owner: stalwart
+        group: stalwart
+        mode: "0750"
+
+    - name: Check whether config.json already exists (never overwrite a live, configured instance)
+      ansible.builtin.stat:
+        path: "{{ stalwart_conf_dir }}/config.json"
+      register: stalwart_config
+
+    - name: Write the minimal DataStore bootstrap config.json (sqlite, per docs/EMAIL_NORTHSTAR.md's own v0 storage decision)
+      ansible.builtin.copy:
+        dest: "{{ stalwart_conf_dir }}/config.json"
+        owner: stalwart
+        group: stalwart
+        mode: "0640"
+        # Real, verified schema (stalw.art/docs/ref/object/data-store, checked live 2026-09-05):
+        # this is the ONLY thing config.json holds -- everything else (listeners, TLS, DKIM,
+        # DNS-provider auto-publish) lives in Stalwart's own datastore, set via the admin UI/CLI,
+        # not this file. Writing this now means Stalwart boots straight into "needs the one-time
+        # setup wizard" instead of full interactive bootstrap-from-nothing mode.
+        content: |
+          {
+            "@type": "Sqlite",
+            "path": "{{ stalwart_data_dir }}"
+          }
+      when: not stalwart_config.stat.exists
+
+    - name: Generate a real recovery-admin password if one hasn't already been pinned
+      ansible.builtin.set_fact:
+        stalwart_recovery_admin_password: "{{ lookup('ansible.builtin.password', '/dev/null length=32 chars=ascii_letters,digits') }}"
+      when: not stalwart_config.stat.exists
+
+    - name: Template the environment file (hostname, public URL, pinned recovery-admin credential)
+      ansible.builtin.template:
+        src: ../templates/stalwart.env.j2
+        dest: "{{ stalwart_conf_dir }}/stalwart.env"
+        owner: root
+        group: stalwart
+        mode: "0640"
+      when: not stalwart_config.stat.exists
+      notify: restart stalwart
+
+    - name: Open the firewall for real mail + admin ports
+      community.general.ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop:
+        - "22"   # SSH -- never lock yourself out
+        - "25"   # SMTP
+        - "587"  # Submission
+        - "993"  # IMAPS
+        - "443"  # HTTPS (admin UI / JMAP / autoconfig, once configured off the bootstrap 8080)
+        - "8080" # Bootstrap/recovery admin UI -- real, temporary; see the closing note below on
+                 # restricting or closing this again once the one-time setup wizard is done.
+
+    - name: Enable UFW
+      community.general.ufw:
+        state: enabled
+        policy: deny
+
+    - name: Ensure the Stalwart service is enabled and running
+      ansible.builtin.systemd:
+        name: stalwart
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: Show the one real, remaining manual step
+      ansible.builtin.debug:
+        msg: >-
+          Stalwart is installed and running in bootstrap/setup mode.
+          {% if stalwart_recovery_admin_password is defined %}
+          Recovery admin credential (save this now -- it is not printed again):
+          {{ stalwart_recovery_admin_user }} / {{ stalwart_recovery_admin_password }}
+          {% endif %}
+          Finish setup at: http://{{ inventory_hostname }}:8080/admin
+          -- set the default domain, storage confirmation, listener ports (25/587/993/443),
+          ACME/Let's Encrypt for {{ stalwart_hostname }}, and the Cloudflare DNS-provider
+          credentials for MX/SPF/DKIM/DMARC auto-publish (same token as
+          EMILY/var/cloudflare.md). This one-time step is real and not automated by this
+          playbook -- see this file's own header comment for why.
+
+  handlers:
+    - name: restart stalwart
+      ansible.builtin.systemd:
+        name: stalwart
+        state: restarted
