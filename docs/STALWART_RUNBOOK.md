@@ -153,6 +153,43 @@ terraform apply -var="stalwart_ipv4=<the box's real IP>"
   acme`) before assuming something's broken.
 - Log into the admin UI and check **DKIM Signatures** — both rows should show as configured.
 
+## Provisioning accounts from the CarePyre admin console (2026-09-05)
+
+Founder real-time: "ok we need a way to provision accounts from the carepyre admin console is
+that possible?" — followed by an explicit scope decision: admin-only for now, since console
+self-signup itself is currently open (mailbox provisioning stays gated regardless).
+
+Real, shipped: `IDUNA_PRO/internal/mailaccounts/client.go` is a real JMAP client replaying
+Stalwart's own login flow (the same `POST /api/auth` → `POST /auth/token` exchange captured live
+from the admin UI's own network traffic) to call `x:Account/set`/`x:Account/query` — the exact
+method names the real admin console itself uses, captured live via Playwright network capture on
+2026-09-05, not guessed. `IDUNA_PRO/internal/http/handlers/mail_accounts.go` exposes it at
+`GET/POST /api/v1/mail-accounts`, gated on `users.admin` (same permission the existing admin
+panel already uses). `CarePyre/console.html` has a real "Mail accounts" card, shown only to
+admins, with a create form and account list.
+
+Real bugs found and fixed while building this:
+- **PKCE `code_verifier` too short** — the first working version used a short, readable string
+  (38 chars) as the PKCE "plain" verifier; Stalwart's own OAuth server rejected it with
+  `invalid_grant` with no further detail. RFC 7636 requires 43-128 characters; fixed by
+  generating a real 64-character random verifier instead. This was also the real, unexplained
+  cause of `invalid_grant` failures hit earlier in this same session while probing the OAuth
+  flow by hand with `curl`.
+- **Credential reuse over an unverified TLS connection** — the client's own admin password
+  travels with every request; sending it over `http://` (no TLS at all) would put it on the wire
+  in cleartext across the public internet. Since `mail.carepyre.org`'s cert is still self-signed
+  (real ACME issuance timing still unconfirmed), the client uses `https://` with
+  `InsecureSkipVerify: true` scoped to just this connection — real TLS encryption against
+  passive eavesdropping, though not protection against an active MITM. **Remove
+  `InsecureSkipVerify` once a real, publicly-trusted cert is confirmed live** (see the "Verify"
+  step above) — it isn't meant to be permanent.
+
+Real, honest, named security tradeoff not further addressed this session: this integration
+reuses the same full-admin Stalwart recovery credential already used to configure the instance,
+not a scoped, mailbox-creation-only service account. Stalwart's own Roles feature may support
+finer scoping — worth a real look before this integration handles a larger volume of real
+community-member signups.
+
 ## Known, honest gaps not closed by this runbook
 
 - **No `postmaster@carepyre.org` mailbox** — the DMARC record's `rua=` address points there, but

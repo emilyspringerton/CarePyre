@@ -234,6 +234,45 @@
       </div>
     </details>
   </div>
+
+  <!-- Mail accounts admin panel: founder real-time, 2026-09-05, "ok we need a way to provision
+       accounts from the carepyre admin console is that possible?" -- gated on users.admin, same
+       permission as admin-card above (explicit founder decision: "For now admins can provision
+       because sign up is just open", i.e. console self-signup is open but mailbox provisioning
+       specifically stays admin-only). All calls go through IDUNA_PRO's own credential-holding
+       proxy (/api/v1/mail-accounts) -- the real Stalwart admin credential never reaches this
+       page, same real pattern the Twilio panel above already establishes. -->
+  <div class="card hidden" id="mail-accounts-card">
+    <h2>Mail accounts</h2>
+    <p class="sub">Provision a real mailbox on mail.carepyre.org.</p>
+    <div id="mail-accounts-error" class="error hidden"></div>
+    <div id="mail-accounts-success" class="success-msg hidden"></div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr><th>Email</th><th>Created</th></tr>
+        </thead>
+        <tbody id="mail-accounts-body"></tbody>
+      </table>
+    </div>
+    <details class="section">
+      <summary>Create a mailbox</summary>
+      <div class="body">
+        <form id="mail-account-form">
+          <label for="mail-account-username">Username (local part only, e.g. "jane")</label>
+          <input id="mail-account-username" type="text" placeholder="jane" required>
+          <label for="mail-account-domain">Domain</label>
+          <input id="mail-account-domain" type="text" value="carepyre.org" required>
+          <p class="sub" style="margin:0 0 0.6rem;">A real, random password is generated and shown once below -- it is never stored by this console.</p>
+          <button type="submit">Create mailbox</button>
+        </form>
+        <div id="mail-account-created" class="hidden" style="margin-top:0.8rem;">
+          <div class="id-row"><span class="k">Email</span><span class="v" id="mail-account-created-email"></span></div>
+          <div class="id-row"><span class="k">Password</span><span class="v" id="mail-account-created-password"></span></div>
+        </div>
+      </div>
+    </details>
+  </div>
 </main>
 
 <script>
@@ -376,9 +415,11 @@
     const isTwilioAdmin = perms.includes('twilio.admin');
     document.getElementById('admin-card').classList.toggle('hidden', !isAdmin);
     document.getElementById('twilio-card').classList.toggle('hidden', !isTwilioAdmin);
+    document.getElementById('mail-accounts-card').classList.toggle('hidden', !isAdmin);
     document.getElementById('main').classList.toggle('wide', isAdmin || isTwilioAdmin);
     if (isAdmin) loadAdminUsers();
     if (isTwilioAdmin) loadTwilioStatus();
+    if (isAdmin) loadMailAccounts();
   }
 
   // ---- Your SIP account (CP-SIP-1244543543) ----
@@ -612,11 +653,74 @@
     }
   });
 
+  // ---- Mail accounts (founder real-time, 2026-09-05: "a way to provision accounts from the
+  // carepyre admin console") ----
+  function mailAccountMessage(ok, text) {
+    const errEl = document.getElementById('mail-accounts-error');
+    const okEl = document.getElementById('mail-accounts-success');
+    errEl.classList.add('hidden');
+    okEl.classList.add('hidden');
+    (ok ? okEl : errEl).textContent = text;
+    (ok ? okEl : errEl).classList.remove('hidden');
+  }
+
+  async function loadMailAccounts() {
+    const body = document.getElementById('mail-accounts-body');
+    try {
+      const res = await fetch(API_BASE + '/mail-accounts', { headers: authHeaders() });
+      const data = await res.json().catch(() => ([]));
+      if (!res.ok) {
+        mailAccountMessage(false, (data && data.error) || ('HTTP ' + res.status));
+        return;
+      }
+      body.innerHTML = '';
+      for (const a of (data || [])) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td>' + esc(a.emailAddress) + '</td><td>' + esc(a.createdAt || '') + '</td>';
+        body.appendChild(tr);
+      }
+      if (!data || data.length === 0) {
+        body.innerHTML = '<tr><td colspan="2" class="sub">No mailboxes yet.</td></tr>';
+      }
+    } catch (err) {
+      mailAccountMessage(false, 'Could not reach the console API: ' + err.message);
+    }
+  }
+
+  document.getElementById('mail-account-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('mail-account-username').value.trim();
+    const domain = document.getElementById('mail-account-domain').value.trim();
+    try {
+      const res = await fetch(API_BASE + '/mail-accounts', {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+        body: JSON.stringify({ username, domain }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        // Real, honest passthrough -- Stalwart's own error (e.g. a duplicate username) shows
+        // here verbatim, same convention the Twilio panel above already established.
+        mailAccountMessage(false, data.error || ('Could not create mailbox (HTTP ' + res.status + ').'));
+        return;
+      }
+      mailAccountMessage(true, 'Mailbox created: ' + data.email);
+      document.getElementById('mail-account-created-email').textContent = data.email;
+      document.getElementById('mail-account-created-password').textContent = data.password;
+      document.getElementById('mail-account-created').classList.remove('hidden');
+      document.getElementById('mail-account-username').value = '';
+      loadMailAccounts();
+    } catch (err) {
+      mailAccountMessage(false, 'Could not reach the console API: ' + err.message);
+    }
+  });
+
   els.signoutBtn.addEventListener('click', () => {
     localStorage.removeItem(TOKEN_KEY);
     els.consoleCard.classList.add('hidden');
     document.getElementById('admin-card').classList.add('hidden');
     document.getElementById('twilio-card').classList.add('hidden');
+    document.getElementById('mail-accounts-card').classList.add('hidden');
     document.getElementById('main').classList.remove('wide');
     els.authCard.classList.remove('hidden');
     els.authForm.reset();
