@@ -21,6 +21,14 @@ jobs:
           distribution: temurin
           java-version: "21"
 
+      # parena_runtime.h unconditionally includes <SDL2/SDL.h>/<SDL2/SDL_ttf.h>
+      # (stdlib/sdl2.prn is "built in, same tier as core" per PARENA's own
+      # STDLIB.md), so ANY build of this runtime needs these dev headers,
+      # not just ones that happen to call into sdl2.prn -- same real gotcha
+      # PARENA's own ci.yml already documents and fixes the same way.
+      - name: Install SDL2 + SDL2_ttf dev headers (CI runner -- apt is normal here)
+        run: sudo apt-get update && sudo apt-get install -y libsdl2-dev libsdl2-ttf-dev
+
       # Real, deliberate include order (see native/sip-jni-proof/README.md's
       # own "found live" note): parena_runtime.h sets its own feature-test
       # macros and must be included before <jni.h> in carepyre_sip_jni.c, or
