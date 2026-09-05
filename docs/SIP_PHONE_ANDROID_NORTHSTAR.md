@@ -161,17 +161,23 @@ linked C, since this is a JVM host, not a C one.
   call (answer and decline), and three real, honest `InvalidTransition` errors including a
   genuine protocol-violation case (`RecvBye` while still `Calling`). `make test`: 345/345, zero
   regressions. Full writeup: `PARENA/STDLIB.md`'s own "sip/transaction" section.
-- **Phase 4 — G.711 codec + real RTP send/receive loop**, wired to Android's `AudioRecord`/
-  `AudioTrack` via the same JNI bridge. **DTMF half SHIPPED ahead of the rest of this phase**
-  (kanban priority-queue card CAREPYRE-SIP-4324324, "SIP PHONE NEEDS DTMF DIAL TONES"): real,
-  tested `PARENA/stdlib/sip/dtmf.prn` — RFC 4733/2833 telephone-event payload parse/build plus
-  keypad-digit↔event-code mapping, already named as the real, correct DTMF mechanism in
-  `PARENA/docs/SIP_TWILIO_GATEWAY_NORTHSTAR.md`. Two real compiler bugs found and worked around
-  (an `alloc`+`inline-c` build path matching `ldap/ber.prn`'s own precedent, and a genuinely new
-  `if`-branch type-inference gap fixed by inlining rather than `let`-binding). 12/12 new tests,
-  345/345 full suite, zero regressions — full writeup in `PARENA/STDLIB.md`'s own "sip/dtmf"
-  section. Real, honest, still-open: the audio codec itself (G.711 encode/decode) and the actual
-  RTP send/receive loop are separate, unbuilt work — this ships the SIGNALING half of DTMF only.
+- **Phase 4 — G.711 codec SHIPPED, RTP send/receive loop still open.** DTMF signaling half
+  shipped first (kanban priority-queue card CAREPYRE-SIP-4324324, "SIP PHONE NEEDS DTMF DIAL
+  TONES"): real, tested `PARENA/stdlib/sip/dtmf.prn` — RFC 4733/2833 telephone-event payload
+  parse/build plus keypad-digit↔event-code mapping, already named as the real, correct DTMF
+  mechanism in `PARENA/docs/SIP_TWILIO_GATEWAY_NORTHSTAR.md`. 12/12 tests. Then the real audio
+  codec itself: `PARENA/stdlib/sip/g711.prn` — `linear2ulaw`/`ulaw2linear`/`linear2alaw`/
+  `alaw2linear`, a direct, verified port of the canonical Sun/CCITT public-domain reference (the
+  same one SoX/FFmpeg/Asterisk trace back to), matching `pjsip_carepyre_phone.conf`'s own real
+  `allow=ulaw,alaw` negotiation. 9/9 tests, every expected value hand-derived against the real
+  reference algorithm, not guessed. Three real compiler bugs found and worked around across both
+  modules (an `alloc`+`inline-c` build path, an inline-`if` type-inference gap, and a third,
+  subtler `let`-bound-branching-value gap needing a real function-call boundary to fix, not just
+  an operator wrap) — full writeup in `PARENA/STDLIB.md`'s own "sip/dtmf" and "sip/g711" sections.
+  345/345 full suite, zero regressions, both times. Real, honest, still open: the actual RTP
+  send/receive loop tying `sip/rtp.prn`'s header codec to `sip/g711.prn`'s sample codec over a
+  real `net/udp.prn` socket, driven by Android's `AudioRecord`/`AudioTrack` — genuinely
+  unbuilt, and the last piece before two-way audio is even attemptable.
 - **Phase 5 — real Android app scaffold SHIPPED** (kanban CP-SIP-9911, "Android APK should be in
   releases"). `android/` is a real, buildable, installable Gradle project — verified locally as
   far as this sandbox can go (`./gradlew tasks` succeeds; `assembleDebug` fails ONLY on "SDK
