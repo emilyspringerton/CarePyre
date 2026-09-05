@@ -192,7 +192,19 @@
   <audio id="remote-audio" autoplay playsinline></audio>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/jssip@3.10.1/lib-es5/JsSIP.min.js"></script>
-<script src="webphone.js"></script>
+<script type="module">
+  // JsSIP's own npm package (as of 3.10.1) ships CommonJS only (lib-es5/JsSIP.js uses
+  // require()/module.exports, no browser-ready UMD/global bundle) -- a plain <script src=...>
+  // tag against that file throws "require is not defined" since there's no bundler present to
+  // resolve it. jsdelivr's own "+esm" endpoint solves this for real: it bundles the package
+  // (and its own real transitive deps, debug/sdp-transform) into one genuine ES module on the
+  // fly, importable directly by any modern browser with no build step. See
+  // https://www.jsdelivr.com/esm for how this feature works.
+  import * as JsSIPModule from 'https://cdn.jsdelivr.net/npm/jssip@3.10.1/+esm';
+  window.JsSIP = JsSIPModule.default || JsSIPModule;
+  const script = document.createElement('script');
+  script.src = 'webphone.js';
+  document.body.appendChild(script);
+</script>
 </body>
 </html>
