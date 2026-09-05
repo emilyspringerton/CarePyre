@@ -190,6 +190,40 @@ not a scoped, mailbox-creation-only service account. Stalwart's own Roles featur
 finer scoping — worth a real look before this integration handles a larger volume of real
 community-member signups.
 
+## Outbound delivery to Gmail/Outlook didn't work at first (2026-09-05)
+
+Founder real-time: "sending from webmail to gmail does not work (we can receive from gmail) not
+sure if it takes time for our anti spam stuff to register or what."
+
+Real root cause, found live: **Linode blocks outbound port 25 (SMTP) by default on new
+accounts/instances**, specifically to prevent spam abuse. Confirmed directly:
+
+```bash
+ssh deploy@45.79.143.216 "timeout 8 bash -c 'echo > /dev/tcp/gmail-smtp-in.l.google.com/25'"
+# -> times out
+```
+
+This explains the exact asymmetry reported: *inbound* mail (someone else's server connecting to
+us) works fine because nothing blocks that; *outbound* (us connecting out to Gmail) is blocked
+at the network level, unrelated to DKIM/SPF/DMARC/Stalwart configuration (all independently
+confirmed correct beforehand). Stalwart's own Enterprise-only delivery-tracing UI
+(`Emails → History → Outbound Delivery`) would have shown this clearly but needs a paid license
+we don't have; the real diagnosis came from a direct TCP connection test instead.
+
+Two real fixes applied the same day, via the Linode API (`EMILY/var/linode.env`):
+
+1. **Reverse DNS (PTR) fixed**: was still the generic Linode default
+   (`45-79-143-216.ip.linodeusercontent.com`), now set to `mail.carepyre.org` via
+   `PUT /v4/networking/ips/45.79.143.216`. Gmail/Outlook check this strictly even once port 25
+   works — a real, separate requirement, not just a side effect of the port block.
+2. **Support ticket filed** (`#27380609`, via `POST /v4/support/tickets`) requesting outbound
+   port 25 be unblocked for this specific Linode (`carepyre-email`, id `104390828`) — this part
+   needs a human at Linode to actually act on it, not something the API can self-service.
+
+**Check ticket #27380609's status before assuming outbound mail still doesn't work** — once
+Linode unblocks the port, delivery to Gmail/Outlook should just start working with no further
+config changes needed on our end.
+
 ## Known, honest gaps not closed by this runbook
 
 - **No `postmaster@carepyre.org` mailbox** — the DMARC record's `rua=` address points there, but
