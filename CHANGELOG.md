@@ -1,4 +1,5 @@
 ## 2026-09-05
+- Real SIP REGISTER shipped in plain Java (DigestAuth.java + SipClient.java), verified against live Asterisk: full REGISTER->401->digest->re-REGISTER round trip proven correct (403 with a deliberately wrong password). Pivoted away from the NDK-blocked PARENA path to get a real registered phone sooner. (sess-20260905-0720-ec33e7c5)
 - SIP Phone NORTHSTAR: G.711 codec shipped, RTP send/receive loop named as the last piece before real two-way audio (sess-20260905-0720-ec33e7c5)
 - SIP Phone NORTHSTAR: DTMF signaling (RFC 4733) shipped as the first half of Phase 4 (sess-20260905-0720-ec33e7c5)
 - New SIP_QR_ONBOARDING_NORTHSTAR.md: Phase 1 (backend payload) shipped, Phase 2 (QR rendering) and Phase 3 (Android camera scan) scoped for next iteration (sess-20260905-0720-ec33e7c5)
