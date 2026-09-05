@@ -1,5 +1,10 @@
 # Stalwart on Google Cloud — Deployment Plan
 
+> **2026-09-05 update**: `docs/STALWART_HOSTING_DECISION.md` re-opened this document's own
+> "where does this run" question (kanban CPMAIL-114/144) and recommends **Linode + Cloudflare
+> DNS instead of GCP** — read that document first. This plan's own architecture/phasing reasoning
+> stays valid as a reference either way; only the concrete provider names would change.
+
 Kanban card CPBOOT-002 ("stand up stalwart mail server in google cloud"), founder real-time
 direction 2026-09-05: "stalwart email server in google cloud write up the plan." This is the
 direct sequel to `docs/EMAIL_NORTHSTAR.md` (2026-09-03), which already did the real research on

@@ -1,5 +1,21 @@
 ## 2026-09-05
 
+- docs: real Stalwart hosting decision (kanban CPMAIL-114/144, founder real-time multi-message
+  thread weighing Linode vs. Google Cloud for the sovereign email server — cost via existing GCP
+  credits vs. the optics of hosting "sovereign" infrastructure on Google, with a real, explicit
+  lock-in concern since moving later is painful). New `docs/STALWART_HOSTING_DECISION.md`
+  recommends **Linode ($5/mo Nanode 1GB, confirmed live — matches the founder's own "saving the
+  5" figure exactly) + Cloudflare DNS** (reusing the real, existing token at
+  `EMILY/var/cloudflare.md`) over GCP — Stalwart's own real, documented 1GB minimum makes the
+  cheapest Linode plan correctly sized, not underpowered, and Stalwart's own native
+  Cloudflare-DNS auto-publish (already found in `EMAIL_NORTHSTAR.md`) means DNS doesn't need
+  Google either, fully resolving the sovereignty concern rather than partially compromising on
+  it. Honest counter-point named, not hidden: Linode is now Akamai-owned, so the real framing is
+  "not Google, and not this monorepo's other existing hyperscaler dependency" rather than "a
+  small independent host." `docs/STALWART_GCP_DEPLOYMENT_PLAN.md` gets a pointer to this at its
+  own top; its architecture/phasing stays valid as a reference either way. Decision only — no
+  Linode account, no Cloudflare DNS zone, nothing deployed.
+
 - feat: SIP phone (Android) scoping + real Phase 1 proof (kanban SIP-0001, founder real-time:
   "CarePyre EPhone App - SIP PHONE on android use parena - keep it in the CarePyre repo for
   now"). New `docs/SIP_PHONE_ANDROID_NORTHSTAR.md` — real, checked foundation: PARENA already has
