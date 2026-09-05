@@ -1,3 +1,26 @@
+## 2026-09-05
+
+- feat: SIP phone (Android) scoping + real Phase 1 proof (kanban SIP-0001, founder real-time:
+  "CarePyre EPhone App - SIP PHONE on android use parena - keep it in the CarePyre repo for
+  now"). New `docs/SIP_PHONE_ANDROID_NORTHSTAR.md` — real, checked foundation: PARENA already has
+  tested `stdlib/sip/message.prn` (RFC 3261 message parse/build, 9/9 real assertions pass) and
+  `stdlib/sip/rtp.prn` (RFC 3550 RTP header parse/build, verified live). Real architecture named:
+  PARENA's proven target for this code is C, not the Java emitter SPIDERBEETLE proved for scalar
+  functions only — so the real path is PARENA-C → shared library → JNI, matching SIP-0001's own
+  "java ffi escape hatch when needed." Phase 1 shipped for real: `native/sip-jni-proof/` compiles
+  `message.prn` to C, wraps it in `libcarepyre_sip.so`, and calls it from a real Java program via
+  JNI — verified live, a real RFC-3261-shaped SIP REGISTER message comes back correctly. Real,
+  honest gaps named for later phases: no Android SDK in this sandbox (same constraint
+  SPIDERBEETLE's own NORTHSTAR already documented), no SDP body support, no transaction/dialog
+  state machine, no audio codec, no real SIP account to test end-to-end against. Not registered
+  in `EMILY/context/golden-docs-index.md`, per this repo's own standing "no golden doc until
+  integration/divestment decision" rule.
+
+- docs: real GCP deployment plan for the Stalwart mail server research `docs/EMAIL_NORTHSTAR.md`
+  already scoped (kanban CPBOOT-002, founder real-time: "stalwart email server in google cloud
+  write up the plan"). New `docs/STALWART_GCP_DEPLOYMENT_PLAN.md`, answering the 5 real open
+  deployment questions `EMAIL_NORTHSTAR.md` named rather than re-researching Stalwart itself.
+
 ## 2026-09-03
 
 - docs: real research-and-planning pass for kanban priority-queue card CPCORE-001 ("SMS stdlibs we need to forward messages from sms network into the mesh network"). New docs/SMS_MESH_GATEWAY_NORTHSTAR.md, a real, direct continuation of docs/MESH_NETWORK_RESEARCH.md (S184-02), which already named the gateway-node architecture ("a real SMS-gateway API (Twilio-style)") -- this doc plans the actual PARENA stdlib work that role needs. Real, existing foundation checked directly: net/http.prn (real HTTP client), net/tcp.prn (real tcp-listen/tcp-accept server foundation), http/controller.prn+router.prn+routes.prn (real Request/Response data shapes and route matching, but not raw-socket HTTP parsing). Real, newly-identified gaps, most decisive first: TLS/HTTPS client support (net/http.prn's own header comment already says "not implemented" -- Twilio's API is HTTPS-only, no fallback; real recommendation is FFI to OpenSSL, same judgment crypto/hash.prn's own sha256 already makes, not scratch-built), raw HTTP/1.1 request parsing off a socket (a real, buildable structural sibling of sip/message.prn), application/x-www-form-urlencoded body decoding (Twilio's real inbound webhook shape, not JSON), and base64 encoding (needed for the outbound API's own Basic Auth header) -- both new encode/decode gaps are the same real "lookup-table byte transform" shape net/wire.prn's own hex-digit/hex-byte helpers already established this session, no new compiler primitives needed. Real 4-phase plan, explicitly gated on the TLS binding (Phase 2) before any real end-to-end inbound/outbound proof (Phase 4) is possible. Real, direct sibling to PARENA/docs/SIP_TWILIO_GATEWAY_NORTHSTAR.md (the voice half of the same real Twilio-bridge idea, same session, same TLS blocker). Not registered in EMILY/context/golden-docs-index.md, per this repo's own explicit standing "no golden doc until integration/divestment decision" instruction (same precedent EMAIL_NORTHSTAR.md already set). Planning only, no code written. (sess-20260902-2008-ed50169e)

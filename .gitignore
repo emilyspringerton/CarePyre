@@ -1,0 +1,5 @@
+# Build artifacts for native/sip-jni-proof (see its own README to rebuild) — kept out of git,
+# reproducible from the committed source.
+native/**/*.so
+native/**/classes/
+native/**/*.class
