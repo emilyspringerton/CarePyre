@@ -486,6 +486,7 @@
   let mode = 'login'; // 'login' | 'register'
 
   const els = {
+    authMain: document.getElementById('auth-main'),
     authCard: document.getElementById('auth-card'),
     appShell: document.getElementById('app-shell'),
     authTitle: document.getElementById('auth-title'),
@@ -618,6 +619,7 @@
         permsEl.appendChild(pill);
       }
     }
+    els.authMain.classList.add('hidden');
     els.authCard.classList.add('hidden');
     els.appShell.classList.remove('hidden');
     showPage('mail');
@@ -1182,6 +1184,7 @@
     document.getElementById('mail-accounts-card').classList.add('hidden');
     document.getElementById('nav-admin').classList.add('hidden');
     showPage('mail');
+    els.authMain.classList.remove('hidden');
     els.authCard.classList.remove('hidden');
     els.authForm.reset();
     setMode('login');
