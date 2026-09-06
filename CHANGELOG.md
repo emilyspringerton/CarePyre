@@ -1,4 +1,5 @@
 ## 2026-09-06
+- Web Phone auto-connects per-user (from webphone-credentials) and only shows when a real webphone identity exists for that user; webphone.js supports query-param auto-register. (sess-20260905-0720-ec33e7c5)
 
 - Console SIP Phone page now embeds the browser Web Phone (webphone.html) via iframe -- a working fallback when raw UDP SIP is blocked on mobile networks. (sess-20260905-0720-ec33e7c5)
 
