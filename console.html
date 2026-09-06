@@ -363,21 +363,24 @@
         </div>
 
         <!-- Web Phone -- founder real-time, 2026-09-06: "make the web phone work from inside
-             of the console." Real, raw UDP SIP (extension 1000, the native app's own path) can
-             be blocked by carrier/mobile-network firewalls outside this server's control -- a
-             real, previously-confirmed limitation, not fixable from this box. The in-browser
-             webphone (extension 1000web, JsSIP over wss:// on port 443, the one port every
-             mobile network already has to let through for HTTPS) sidesteps that whole class of
-             problem. Embedded here via a same-origin iframe pointing at the already-real,
-             already-verified standalone webphone.html/webphone.js -- not re-implemented inline,
-             so it inherits everything already tested there (JsSIP registration, WebRTC audio,
-             DTMF keypad, incoming/outgoing calls) with zero risk of a fresh reimplementation bug. -->
-        <div class="card narrow-card" style="margin-top:1.5rem; padding:0; overflow:hidden;">
+             of the console" then "can we have more than just the 1 extension ... i am expecting
+             to only see the web sip phone if there is an extension configured for that user and
+             then if its not 1000 im still expecting it to work." Hidden by default: only shown
+             (by loadMySipAccount below) when the signed-in user actually has a real, provisioned
+             "<extension>web" identity -- not just any sip_accounts row, since an admin can
+             assign a placeholder extension with nothing real behind it yet (see
+             sudo-queue/72-provision-web-extension.sh). The iframe src is set dynamically with
+             this user's OWN real extension/password (from GET
+             /api/v1/sip-accounts/me/webphone-credentials) as query params, which webphone.js
+             reads to auto-register with zero typing -- for whichever extension is actually
+             theirs. Embedded via a same-origin iframe pointing at the already-real,
+             already-verified standalone webphone.html/webphone.js -- not re-implemented inline. -->
+        <div class="card narrow-card hidden" id="webphone-card" style="margin-top:1.5rem; padding:0; overflow:hidden;">
           <div style="padding:1.4rem 1.4rem 0;">
             <h2 style="margin:0 0 0.2rem;">Web Phone</h2>
             <p class="sub" style="margin:0;">Real calling from your browser -- works even when raw SIP over your mobile network doesn't.</p>
           </div>
-          <iframe src="webphone.html" title="CarePyre Web Phone" allow="microphone" style="width:100%; height:680px; border:none; display:block;"></iframe>
+          <iframe id="webphone-iframe" title="CarePyre Web Phone" allow="microphone" style="width:100%; height:680px; border:none; display:block;"></iframe>
         </div>
       </div>
 
@@ -706,8 +709,32 @@
         '</div>';
       renderSipQR(acct);
       document.getElementById('sip-provisioning-url-btn').addEventListener('click', loadMyProvisioningUrl);
+      loadMyWebphone();
     } catch (err) {
       body.innerHTML = '<p class="error" style="margin:0;">Could not load your SIP account: ' + esc(err.message) + '</p>';
+    }
+  }
+
+  // loadMyWebphone -- founder real-time, 2026-09-06: "i am expecting to only see the web sip
+  // phone if there is an extension configured for that user and then if its not 1000 im still
+  // expecting it to work." Only unhides the Web Phone card when this user's own real
+  // "<extension>web" identity actually exists server-side (sudo-queue/72-provision-web-
+  // extension.sh) -- a sip_accounts row alone isn't enough, since an admin can assign a
+  // placeholder extension with nothing real behind it yet.
+  async function loadMyWebphone() {
+    const card = document.getElementById('webphone-card');
+    try {
+      const res = await fetch(API_BASE + '/sip-accounts/me/webphone-credentials', { headers: authHeaders() });
+      if (!res.ok) {
+        card.classList.add('hidden');
+        return;
+      }
+      const data = await res.json();
+      const params = new URLSearchParams({ ext: data.extension, pass: data.password, domain: data.domain });
+      document.getElementById('webphone-iframe').src = 'webphone.html?' + params.toString();
+      card.classList.remove('hidden');
+    } catch (err) {
+      card.classList.add('hidden');
     }
   }
 

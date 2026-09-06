@@ -100,10 +100,7 @@ function wireSessionEvents(session, direction) {
   });
 }
 
-document.getElementById('btn-register').addEventListener('click', () => {
-  const extension = document.getElementById('cfg-extension').value.trim();
-  const password = document.getElementById('cfg-password').value;
-  const domain = document.getElementById('cfg-domain').value.trim();
+function doRegister(extension, password, domain) {
   if (!extension || !password || !domain) {
     setStatus('status-line', 'Fill in extension, password, and domain.', 'error');
     return;
@@ -139,7 +136,34 @@ document.getElementById('btn-register').addEventListener('click', () => {
   });
 
   ua.start();
+}
+
+document.getElementById('btn-register').addEventListener('click', () => {
+  doRegister(
+    document.getElementById('cfg-extension').value.trim(),
+    document.getElementById('cfg-password').value,
+    document.getElementById('cfg-domain').value.trim()
+  );
 });
+
+// Auto-connect -- founder real-time, 2026-09-06: "i am expecting it to just work." When this
+// page is embedded in the console (console.html's SIP Phone page, via an iframe), the console
+// already knows the caller's own real "<extension>web" identity and its password (from
+// IDUNA_PRO's new GET /api/v1/sip-accounts/me/webphone-credentials) and passes them here as URL
+// query params -- so the user never has to type an extension or password at all, for WHICHEVER
+// extension is actually theirs, not just 1000. Opening this page standalone (no query params)
+// still shows the manual config screen exactly as before -- nothing here changes that path.
+(function autoConnect() {
+  const params = new URLSearchParams(window.location.search);
+  const ext = params.get('ext');
+  const pass = params.get('pass');
+  const domain = params.get('domain');
+  if (ext && pass && domain) {
+    document.getElementById('cfg-extension').value = ext;
+    document.getElementById('cfg-domain').value = domain;
+    doRegister(ext, pass, domain);
+  }
+})();
 
 document.getElementById('btn-call').addEventListener('click', () => {
   const number = document.getElementById('dial-number').value.trim();
