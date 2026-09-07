@@ -1,4 +1,5 @@
 ## 2026-09-07
+- Fixed CAREPYRE-42143124: the provisioning URL (already password-inclusive) is now rendered as a scannable QR and recognized by the Android app's scan/camera-open paths, achieving true zero-manual-typing SIP registration. (sess-20260905-0720-ec33e7c5)
 - Real, audible DTMF dial tones (ITU-T Q.23 frequencies via Web Audio) on both the webphone and Android app keypads -- pre-call dialing and in-call, local feedback only, separate from the already-real RFC 4733 in-band DTMF sent to the far end. (sess-20260905-0720-ec33e7c5)
 - SAGA audit: rewrote badly-stale Status section (console.html/android/webphone/ops now named). (sess-20260905-0720-ec33e7c5)
 - console.html reads white-label branding from IDUNA_PRO at load; new compliance-recording admin panel (browser mic); new android-admin/ Gradle module (white-label Android wrapper, generic/carepyre flavors). (sess-20260905-0720-ec33e7c5)
