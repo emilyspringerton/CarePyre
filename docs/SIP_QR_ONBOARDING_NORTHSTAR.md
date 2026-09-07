@@ -174,6 +174,37 @@ will be the real, live compile check on push. Not yet confirmed against a real d
 that still needs the same real end-to-end call verification this session's own
 `sudo-queue/74-ami-call-monitor.sh` (see `EMILY/BACKLOG.md` SECTION 292) is waiting on.
 
+## Update 2026-09-07 (later) — one-tap same-device open, and staying registered across launches
+
+Two more real, small, coordinated fixes, same session, closing the rest of `CAREPYRE-5435439434`
+("the config needs to be magical and automatic as much as is reasonable") and `CAREPYRE-245435`
+("finish the sip phone it needs to actually work") that don't need a live call to verify:
+
+1. **One-tap same-device open.** `console.html` gained a real `<a href="...">Open in CarePyre
+   SIP Phone app</a>` link pointed at the provisioning URL. When the console is viewed directly
+   on the same phone being set up (as opposed to scanning a QR shown on a DIFFERENT device's
+   screen), tapping this link triggers the exact same VIEW/BROWSABLE intent-filter the QR fix
+   above already wired up — zero typing, zero even scanning, one tap.
+
+2. **Staying registered across app restarts, without a new plaintext-password store.** Real,
+   named friction found live: `saveConfig()`'s own header comment already documents that it
+   deliberately never persists the password (Android Keystore is named as the real, correct,
+   bigger future fix for THAT flow) — but that meant every app restart needed the password
+   re-typed by hand before the phone would register again, a real "doesn't actually work as a
+   phone" gap. Fixed WITHOUT adding new password storage: a provisioning URL is a capability
+   token, not the password itself (already treated as copy/paste-able elsewhere in this exact
+   console) — `app.js` now saves the URL (not the password it resolves to) to `localStorage`
+   only after a real, successful `registerFromProvisioningUrl` registration
+   (`carepyre_provisioning_url` key), and re-fetches + re-registers from it automatically on
+   every app launch (`tryAutoRegister()`). The password itself still never touches
+   `localStorage`, not even once — every registration re-fetches it fresh from the server. The
+   existing manual sip:-URI + hand-typed-password path (`saveConfig()`) is untouched and keeps
+   its own already-established boundary.
+
+Same real, honest, not-yet-verified status as the update above: no Android SDK in this sandbox,
+`node --check` confirms syntax, CI's `android-app` job is the real compile check, and a live
+device/call is still the real, remaining confirmation this can't self-certify.
+
 ## Related
 
 - `CarePyre/docs/SIP_PHONE_ANDROID_NORTHSTAR.md` — the parent SIP phone plan this onboarding

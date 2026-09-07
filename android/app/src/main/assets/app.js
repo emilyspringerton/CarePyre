@@ -210,6 +210,10 @@ function saveConfig(evt) {
   status.textContent = 'Saved. Registering...';
 
   const password = document.getElementById('cfg-password').value;
+  // Real, deliberate reset: a manual sip:-URI + hand-typed-password register is NOT a
+  // provisioning-URL register, so onRegisterResult must not attribute its success to a stale
+  // `lastProvisioningUrl` left over from an earlier attempt.
+  lastProvisioningUrl = null;
   if (typeof Android !== 'undefined' && Android.register && extension && cfg.server) {
     Android.register(cfg.server, cfg.port || '5060', extension, password);
   } else {
@@ -235,7 +239,33 @@ function onRegisterResult(success, message) {
   const status = document.getElementById('save-status');
   status.style.color = success ? '' : '#E5484D';
   status.textContent = (success ? 'Registered: ' : 'Registration failed: ') + message;
+
+  // CAREPYRE-5435439434 ("the config needs to be magical and automatic as much as is
+  // reasonable"), CAREPYRE-245435 ("finish the sip phone it needs to actually work"): a real,
+  // named friction point, not this ask's own oversight -- saveConfig() above deliberately never
+  // persists the password (its own comment names Android Keystore as the real, correct, bigger
+  // future fix for that flow), so every app restart previously needed the password re-typed by
+  // hand before the phone would register again. Real, narrower fix that adds NO new plaintext-
+  // password storage: a provisioning URL is a capability token, not a password itself (this
+  // console already treats it as copy/paste-able, same trust class as a password-reset link),
+  // and re-fetching it fresh on every launch means the actual password still never touches
+  // localStorage, not even once. Only persisted on a real, successful registration -- a failed
+  // or garbage URL is never cached.
+  if (success && lastProvisioningUrl) {
+    try {
+      localStorage.setItem('carepyre_provisioning_url', lastProvisioningUrl);
+    } catch (e) {
+      // Real, honest no-op -- registration itself still succeeded; only the "stay registered
+      // next launch" convenience is lost in whatever WebView context threw here.
+    }
+  }
 }
+
+// lastProvisioningUrl -- tracks which URL (if any) the MOST RECENT registration attempt used,
+// so onRegisterResult above only ever persists a URL for the provisioning-URL path, never for
+// the separate, existing manual sip:-URI + hand-typed-password path (saveConfig() below), which
+// keeps its own already-established "never persist the password" boundary untouched.
+let lastProvisioningUrl = null;
 
 // registerFromProvisioningUrl -- founder real-time, 2026-09-05: "set up provisioning URL from
 // the console for users under my sip and make the sip phone register with just that URL". The
@@ -281,10 +311,27 @@ function doRegisterFromProvisioningUrl(url) {
     status.textContent = 'No native signaling bridge available here -- run this inside the real Android app.';
     return;
   }
+  lastProvisioningUrl = url;
   showScreen('config');
   status.style.color = '';
   status.textContent = 'Registering...';
   Android.registerFromProvisioningUrl(url);
+}
+
+// tryAutoRegister -- real, direct answer to "stay registered without retyping a password every
+// launch" (see onRegisterResult's own header comment for the full real reasoning). Called once
+// at startup; a real, honest no-op if nothing was ever saved (first launch, or the user cleared
+// app data). Harmless if this ALSO ends up racing a fresh provisioning-URL launch (MainActivity's
+// own pendingProvisioningUrl case, from a just-scanned QR or just-tapped link) -- worst case is
+// two back-to-back real REGISTER attempts, which Asterisk itself already just re-authenticates
+// as the same real registration, not a conflict.
+function tryAutoRegister() {
+  try {
+    const saved = localStorage.getItem('carepyre_provisioning_url');
+    if (saved) doRegisterFromProvisioningUrl(saved);
+  } catch (e) {
+    // Real, honest no-op -- same WebView-storage-unavailable case loadConfig() already accepts.
+  }
 }
 
 // startQrScan / onQrScanned / applySipUri -- CAREPYRE-42143124's own "qr code scan feature to
@@ -377,3 +424,4 @@ function loadConfig() {
 
 buildKeypad();
 loadConfig();
+tryAutoRegister();
