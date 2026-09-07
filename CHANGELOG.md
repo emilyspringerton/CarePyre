@@ -1,4 +1,5 @@
 ## 2026-09-07
+- console.html reads white-label branding from IDUNA_PRO at load; new compliance-recording admin panel (browser mic); new android-admin/ Gradle module (white-label Android wrapper, generic/carepyre flavors). (sess-20260905-0720-ec33e7c5)
 - Web phone: eliminated the login-screen flash for users with a provisioned SIP extension -- auto-connect now goes straight to a Connecting screen, never the manual login form, with a real error fallback on actual registration failure. (sess-20260905-0720-ec33e7c5)
 - Draft Terms of Service + Privacy Policy, a provider-scoped Participants provisioning panel in console.html, and a persistent forceful-PGP-encouragement banner (CP-HIPAA-1). (sess-20260905-0720-ec33e7c5)
 
