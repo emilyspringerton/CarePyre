@@ -1,4 +1,5 @@
 ## 2026-09-07
+- Web phone: eliminated the login-screen flash for users with a provisioned SIP extension -- auto-connect now goes straight to a Connecting screen, never the manual login form, with a real error fallback on actual registration failure. (sess-20260905-0720-ec33e7c5)
 - Draft Terms of Service + Privacy Policy, a provider-scoped Participants provisioning panel in console.html, and a persistent forceful-PGP-encouragement banner (CP-HIPAA-1). (sess-20260905-0720-ec33e7c5)
 
 - Geo-restricted mail.carepyre.org's webmail/IMAPS/admin panel to US/MX/CA via a UFW-hooked ipset; SMTP (25) left open to avoid dropping legitimate inbound mail. Verified live. (sess-20260905-0720-ec33e7c5)
