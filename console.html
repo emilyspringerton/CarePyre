@@ -836,7 +836,9 @@
         '<button type="button" id="sip-provisioning-url-btn" style="margin-top:1rem;width:auto;">Get provisioning URL</button>' +
         '<div id="sip-provisioning-url-wrap" class="hidden" style="margin-top:0.6rem;">' +
           '<input type="text" id="sip-provisioning-url" readonly style="width:100%;" onclick="this.select()">' +
-          '<p class="sub" style="margin:0.4rem 0 0;">Paste this into the CarePyre SIP Phone app\'s "Provisioning URL" field -- it registers with no other fields needed. Anyone with this exact URL can register as this extension, so treat it like a password.</p>' +
+          '<a id="sip-provisioning-open-link" href="#" style="display:inline-block;margin-top:0.6rem;">Open in CarePyre SIP Phone app</a>' +
+          '<div id="sip-provisioning-qr" style="display:flex;justify-content:center;margin-top:0.8rem;"></div>' +
+          '<p class="sub" style="margin:0.4rem 0 0;">On THIS phone: tap "Open in CarePyre SIP Phone app" above -- zero typing, zero scanning. On another device: scan the QR with the app, or paste the link into its "Provisioning URL" field. Anyone with this exact link can register as this extension, so treat it like a password.</p>' +
         '</div>';
       renderSipQR(acct);
       document.getElementById('sip-provisioning-url-btn').addEventListener('click', loadMyProvisioningUrl);
@@ -898,11 +900,35 @@
       }
       input.value = data.url;
       wrap.classList.remove('hidden');
+      renderProvisioningQR(data.url);
+      // CAREPYRE-5435439434 ("the config needs to be magical and automatic as much as is
+      // reasonable"): on the SAME phone the console is being viewed on, tapping this link
+      // triggers the exact real Android VIEW/BROWSABLE intent-filter this session's own earlier
+      // fix added -- zero typing, zero even scanning a QR, the most automatic real path
+      // available for the common "set up my own phone" case.
+      document.getElementById('sip-provisioning-open-link').href = data.url;
     } catch (err) {
       wrap.classList.remove('hidden');
       input.value = '';
       input.placeholder = 'Could not reach the console API: ' + err.message;
     }
+  }
+
+  // renderProvisioningQR -- CAREPYRE-42143124's own real, remaining "batteries included" gap,
+  // closed 2026-09-07: renderSipQR() above only ever encoded the passwordless sip: URI, so
+  // there was no QR anywhere actually worth scanning for true zero-manual-typing registration --
+  // a real provisioning URL (this function's own `url` argument) existed and DID carry the real
+  // password, but only ever appeared as a copy/paste text field. Same real client-side QR
+  // generation as renderSipQR(), just pointed at the real URL instead. The Android app's own
+  // onQrScanned()/isProvisioningUrl() (app.js) and its matching AndroidManifest.xml VIEW/
+  // BROWSABLE intent-filter already recognize this exact URL shape and route straight to
+  // registerFromProvisioningUrl -- this QR is the real, matching "something to scan" the other
+  // half of that fix needed.
+  function renderProvisioningQR(url) {
+    const el = document.getElementById('sip-provisioning-qr');
+    if (!el || typeof QRCode === 'undefined') return;
+    el.innerHTML = '';
+    new QRCode(el, { text: url, width: 160, height: 160 });
   }
 
   // ---- Mail (founder real-time, 2026-09-05: "minimal custom webmail in the console") ----
