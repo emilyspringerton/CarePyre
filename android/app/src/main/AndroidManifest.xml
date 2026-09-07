@@ -58,6 +58,26 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="sip" />
             </intent-filter>
+
+            <!-- CAREPYRE-42143124's own real, remaining "batteries included" gap, found live
+                 2026-09-07: the sip: intent-filter above only covers the QR shape that does NOT
+                 carry a password (console.html's renderSipQR()); a provisioning URL
+                 (SipProvisioningFetchHandler's own real `/sip-provisioning/{token}` route)
+                 already includes the real PJSIP password, so recognizing IT the same
+                 "camera app opens this app" way is what actually delivers zero-manual-typing
+                 registration. android:autoVerify deliberately NOT set, same real reasoning this
+                 file's own sip: filter already documents above: that's for server-verified App
+                 Links, which this app doesn't need since the OS still offers this app as an
+                 "open with" choice for a matching link regardless. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="carepyre.org"
+                    android:pathPrefix="/console-api/api/v1/sip-provisioning/" />
+            </intent-filter>
         </activity>
 
         <!-- zxing-android-embedded's own CaptureActivity (the real in-app scanner screen

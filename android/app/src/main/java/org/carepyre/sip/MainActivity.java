@@ -45,6 +45,14 @@ public class MainActivity extends Activity {
     // would silently no-op against a page whose functions don't exist yet.
     private String pendingSipUri;
 
+    // pendingProvisioningUrl -- CAREPYRE-42143124's own real, remaining "batteries included" gap
+    // (2026-09-07): the same real "camera app recognizes a link and opens this app" convenience
+    // sip: URIs already get, extended to a provisioning URL (SipProvisioningFetchHandler's own
+    // real `/sip-provisioning/{token}` route) -- tapping/scanning ONE of those should register
+    // with zero manual typing (password included), the same way app.js's own
+    // doRegisterFromProvisioningUrl already does for the in-app scanner/paste-field paths.
+    private String pendingProvisioningUrl;
+
     // sipClient -- founder real-time: "build the sip phone pls". ONE persistent instance for the
     // whole Activity lifetime once register() succeeds (SipClient.start() keeps its own socket
     // open and its own receiver thread running), not a fresh one per call -- a real phone stays
@@ -269,6 +277,10 @@ public class MainActivity extends Activity {
                     view.evaluateJavascript("applySipUri(" + jsStringLiteral(pendingSipUri) + ")", null);
                     pendingSipUri = null;
                 }
+                if (pendingProvisioningUrl != null) {
+                    view.evaluateJavascript("doRegisterFromProvisioningUrl(" + jsStringLiteral(pendingProvisioningUrl) + ")", null);
+                    pendingProvisioningUrl = null;
+                }
             }
         });
         webView.loadUrl("file:///android_asset/index.html");
@@ -291,6 +303,10 @@ public class MainActivity extends Activity {
         if (pendingSipUri != null && webView != null) {
             webView.evaluateJavascript("applySipUri(" + jsStringLiteral(pendingSipUri) + ")", null);
             pendingSipUri = null;
+        }
+        if (pendingProvisioningUrl != null && webView != null) {
+            webView.evaluateJavascript("doRegisterFromProvisioningUrl(" + jsStringLiteral(pendingProvisioningUrl) + ")", null);
+            pendingProvisioningUrl = null;
         }
     }
 
@@ -318,9 +334,23 @@ public class MainActivity extends Activity {
     private void captureSipUriFromIntent(Intent intent) {
         if (intent == null) return;
         Uri data = intent.getData();
-        if (data != null && "sip".equals(data.getScheme())) {
+        if (data == null) return;
+        if ("sip".equals(data.getScheme())) {
             pendingSipUri = data.toString();
+        } else if (isProvisioningUrl(data.toString())) {
+            pendingProvisioningUrl = data.toString();
         }
+    }
+
+    // isProvisioningUrl -- real, minimal, same detection app.js's own isProvisioningUrl() uses
+    // (kept as two small, independent copies rather than a shared module: this Activity's own
+    // Java side and the WebView's own JS side have no real shared-code mechanism today, matching
+    // this app's own established "no cross-language helper sharing" convention). Recognizes the
+    // real, distinctive `/sip-provisioning/` path segment every real provisioning URL
+    // SipProvisioningFetchHandler mints always carries.
+    private static boolean isProvisioningUrl(String url) {
+        return url != null && (url.startsWith("http://") || url.startsWith("https://"))
+                && url.contains("/sip-provisioning/");
     }
 
     /** jsStringLiteral -- real, minimal JS string-literal escaping for evaluateJavascript's own

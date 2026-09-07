@@ -245,17 +245,43 @@ function onRegisterResult(success, message) {
 // hand-off + status feedback, same shape as saveConfig() below.
 function registerFromProvisioningUrl() {
   const url = document.getElementById('provisioning-url').value.trim();
-  const status = document.getElementById('save-status');
   if (!url) {
+    const status = document.getElementById('save-status');
     status.style.color = '#E5484D';
     status.textContent = 'Paste a provisioning URL first.';
     return;
   }
+  doRegisterFromProvisioningUrl(url);
+}
+
+// isProvisioningUrl -- CAREPYRE-42143124's own real, remaining "batteries included" gap, found
+// live (2026-09-07): scanning or camera-opening a QR that encodes a provisioning URL (the ONE
+// real payload shape that already includes the password -- see
+// IDUNA_PRO/internal/http/handlers/sip_provisioning_fetch.go's own header comment) used to fall
+// straight into applySipUri() below, which only understands a bare `sip:` URI and would reject
+// it outright ("That was not a real sip: link") -- so the only way to actually use a
+// provisioning URL was to copy/paste it into the separate #provisioning-url field by hand,
+// defeating the entire "register with just that URL, zero manual typing" point. Real, minimal
+// fix: recognize the real, distinctive `/sip-provisioning/` path segment every real
+// provisioning URL this server mints always carries (SipProvisioningFetchHandler's own real,
+// fixed route), and route to the real, already-working `registerFromProvisioningUrl` native
+// bridge instead of the sip:-URI-only parser.
+function isProvisioningUrl(text) {
+  return typeof text === 'string' && /^https?:\/\//i.test(text) && text.indexOf('/sip-provisioning/') !== -1;
+}
+
+// doRegisterFromProvisioningUrl -- real, shared registration path for every real entry point
+// that can produce a provisioning URL: the manual paste field above, a scanned QR, and a
+// camera-recognized/tapped link (onQrScanned / captureSipUriFromIntent below), one real
+// implementation kept in sync rather than three.
+function doRegisterFromProvisioningUrl(url) {
+  const status = document.getElementById('save-status');
   if (typeof Android === 'undefined' || !Android.registerFromProvisioningUrl) {
     status.style.color = '#E5484D';
     status.textContent = 'No native signaling bridge available here -- run this inside the real Android app.';
     return;
   }
+  showScreen('config');
   status.style.color = '';
   status.textContent = 'Registering...';
   Android.registerFromProvisioningUrl(url);
@@ -326,8 +352,12 @@ function applyPastedUri() {
 // onQrScanned -- called FROM Java (MainActivity's own onActivityResult, after a real
 // zxing-android-embedded decode). Kept as a real, separate, globally-reachable function (not
 // folded into startQrScan) since Java calls it directly by name via evaluateJavascript.
-function onQrScanned(sipUri) {
-  applySipUri(sipUri);
+function onQrScanned(scanned) {
+  if (isProvisioningUrl(scanned)) {
+    doRegisterFromProvisioningUrl(scanned);
+    return;
+  }
+  applySipUri(scanned);
 }
 
 function loadConfig() {

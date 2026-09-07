@@ -135,6 +135,45 @@ softphone (Linphone, Zoiper) the extension/server/port automatically; the founde
 supply that password by hand, the one piece only they can retrieve (from wherever they captured it
 when that script ran) or regenerate (re-running the deploy script themselves, with real sudo).
 
+## Update 2026-09-07 — the real fix: a SECOND QR, for the payload that already had the password
+
+Found live: `SipProvisioningFetchHandler` (`sip_provisioning_fetch.go`) already returns the real
+PJSIP password in its own JSON payload — built for the "register with just that URL" ask
+(founder real-time, 2026-09-05) — but the console only ever exposed that URL as a copy/paste text
+field, never as a QR code, and the Android app's own `onQrScanned()`/camera-open path only ever
+understood the OTHER, passwordless `sip:` URI shape. So the one payload that actually had
+"everything, zero typing" was never reachable by scanning at all — the real, remaining gap this
+session's own earlier "the founder still has to supply that password by hand" paragraph named
+was fixable, not a permanent architectural limit.
+
+Real fix, three real, small, coordinated pieces, not a redesign:
+- `console.html`'s `loadMyProvisioningUrl()` now also renders the provisioning URL as a QR
+  (`renderProvisioningQR()`, the same client-side `QRCode` library `renderSipQR()` already uses).
+- `app.js` gained `isProvisioningUrl()` (recognizes the real, distinctive `/sip-provisioning/`
+  path segment every real provisioning URL always carries) and `doRegisterFromProvisioningUrl()`
+  (the real, shared registration call, factored out of the existing paste-field button handler);
+  `onQrScanned()` now checks `isProvisioningUrl()` first and routes there instead of always
+  falling into the passwordless `applySipUri()` parser.
+- `MainActivity.java` gained the matching native-side detection (`isProvisioningUrl()`,
+  `pendingProvisioningUrl`) so the "camera app recognizes a link and opens this app" convenience
+  the `sip:` scheme already had now also works for a provisioning-URL link — a new
+  `AndroidManifest.xml` VIEW/BROWSABLE intent-filter for `https://carepyre.org/console-api/api/
+  v1/sip-provisioning/*` makes that real, not just theoretical.
+
+Net result: scanning the NEW QR (or tapping/camera-recognizing its underlying link) now registers
+the CarePyre SIP Phone with genuinely zero manual typing, password included — the actual,
+complete "batteries included" ask (`CAREPYRE-42143124`). The OLD passwordless `sip:` QR stays
+exactly as it was, for any third-party SIP client (Linphone, Zoiper) that only knows the
+standard URI shape and still needs its own manual password entry.
+
+Real, honest, not yet done: same sandbox limitation this doc's own prior update already named —
+no real Android SDK/NDK here, so `./gradlew assembleDebug` hasn't run against these changes
+locally; `node --check` confirms `app.js`'s own syntax, a direct Python XML parse confirms
+`AndroidManifest.xml`'s, and this repo's own CI (`android-app` job, `./gradlew assembleDebug`)
+will be the real, live compile check on push. Not yet confirmed against a real device either —
+that still needs the same real end-to-end call verification this session's own
+`sudo-queue/74-ami-call-monitor.sh` (see `EMILY/BACKLOG.md` SECTION 292) is waiting on.
+
 ## Related
 
 - `CarePyre/docs/SIP_PHONE_ANDROID_NORTHSTAR.md` — the parent SIP phone plan this onboarding
