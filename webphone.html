@@ -140,6 +140,32 @@
       <div id="status-line"></div>
     </div>
 
+    <!-- CONNECTING SCREEN -- founder real-time, 2026-09-07: "i need just a dialing interface
+         when i log in not another login." Shown INSTEAD of the config screen the instant this
+         page loads with real ext/pass/domain query params (i.e. embedded in the console, which
+         already knows the caller's own SIP identity) -- the config screen (extension/password
+         fields) is for the standalone, no-params case only; someone with a provisioned
+         extension should never see a login form at all. -->
+    <div class="screen" id="screen-connecting">
+      <div class="call-status" style="margin-top:3rem;">Connecting your CarePyre phone&hellip;</div>
+      <div id="status-line-connecting" style="font-size:0.82rem;color:var(--text-muted);text-align:center;"></div>
+    </div>
+
+    <!-- Runs INLINE, immediately after screen-config/screen-connecting exist in the DOM --
+         switches away from the config screen before the page ever paints it, rather than
+         waiting for the vendor JsSIP bundle + webphone.js to load at the bottom of the page
+         (which would let the login form flash on screen first). Real registration still happens
+         in webphone.js once JsSIP is loaded; this only decides which screen is visible. -->
+    <script>
+      (function () {
+        var p = new URLSearchParams(window.location.search);
+        if (p.get('ext') && p.get('pass') && p.get('domain')) {
+          document.getElementById('screen-config').classList.remove('active');
+          document.getElementById('screen-connecting').classList.add('active');
+        }
+      })();
+    </script>
+
     <!-- DIAL SCREEN -->
     <div class="screen" id="screen-dial">
       <div class="field">

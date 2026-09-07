@@ -100,7 +100,7 @@ function wireSessionEvents(session, direction) {
   });
 }
 
-function doRegister(extension, password, domain) {
+function doRegister(extension, password, domain, onFailure) {
   if (!extension || !password || !domain) {
     setStatus('status-line', 'Fill in extension, password, and domain.', 'error');
     return;
@@ -122,7 +122,9 @@ function doRegister(extension, password, domain) {
   });
 
   ua.on('registrationFailed', (data) => {
-    setStatus('status-line', 'Registration failed: ' + (data.cause || 'unknown reason'), 'error');
+    const reason = data.cause || 'unknown reason';
+    setStatus('status-line', 'Registration failed: ' + reason, 'error');
+    if (onFailure) onFailure(reason);
   });
 
   ua.on('disconnected', () => {
@@ -146,23 +148,35 @@ document.getElementById('btn-register').addEventListener('click', () => {
   );
 });
 
-// Auto-connect -- founder real-time, 2026-09-06: "i am expecting it to just work." When this
-// page is embedded in the console (console.html's SIP Phone page, via an iframe), the console
-// already knows the caller's own real "<extension>web" identity and its password (from
-// IDUNA_PRO's new GET /api/v1/sip-accounts/me/webphone-credentials) and passes them here as URL
-// query params -- so the user never has to type an extension or password at all, for WHICHEVER
-// extension is actually theirs, not just 1000. Opening this page standalone (no query params)
-// still shows the manual config screen exactly as before -- nothing here changes that path.
+// Auto-connect -- founder real-time, 2026-09-06: "i am expecting it to just work," and
+// 2026-09-07: "i need just a dialing interface when i log in not another login." When this page
+// is embedded in the console (console.html's SIP Phone page, via an iframe), the console already
+// knows the caller's own real "<extension>web" identity and its password (from IDUNA_PRO's
+// GET /api/v1/sip-accounts/me/webphone-credentials) and passes them here as URL query params --
+// so the user never has to type or even SEE an extension/password field, for WHICHEVER extension
+// is actually theirs, not just 1000. The inline script at the top of webphone.html already
+// switched the visible screen away from screen-config to screen-connecting before this file even
+// loaded (so the login form never flashes on screen); this function just does the real
+// registration and moves on to the dial screen once it succeeds -- or back to the config screen,
+// with a real error, if it doesn't (never leaves someone stuck on "Connecting..." forever).
+// Opening this page standalone (no query params) still shows the manual config screen exactly as
+// before -- nothing here changes that path.
 (function autoConnect() {
   const params = new URLSearchParams(window.location.search);
   const ext = params.get('ext');
   const pass = params.get('pass');
   const domain = params.get('domain');
-  if (ext && pass && domain) {
-    document.getElementById('cfg-extension').value = ext;
-    document.getElementById('cfg-domain').value = domain;
-    doRegister(ext, pass, domain);
+  if (!(ext && pass && domain)) {
+    return;
   }
+  document.getElementById('cfg-extension').value = ext;
+  document.getElementById('cfg-domain').value = domain;
+  document.getElementById('status-line-connecting').textContent = 'Registering ' + ext + '@' + domain + '…';
+  doRegister(ext, pass, domain, /* onFailure */ (reason) => {
+    document.getElementById('status-line-connecting').textContent = '';
+    setStatus('status-line', 'Auto-connect failed: ' + reason + '. You can try again below.', 'error');
+    showScreen('config');
+  });
 })();
 
 document.getElementById('btn-call').addEventListener('click', () => {
