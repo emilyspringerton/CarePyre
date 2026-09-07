@@ -11,16 +11,39 @@ Layer 1.
 
 ## Status
 
-Real, shipped: static landing page (`index.html`, `STYLE_GUIDE.md`-governed), a working Contact
-form posting to IDUNA's `/api/v1/carepyre/contact`, a second page (`change.html`) for the
-C.H.A.N.G.E. Initiative's six-pillar framework, a "dawn-glow" header art direction (tasteful,
-abstracted Prompt-o-verse art — deliberately not the gallery's usual franchise-mashup style),
-and nginx config prepped for `carepyre.org` (domain/cert setup itself queued in `sudo-queue/`,
-not yet run). `source/gemini-transcript-2026-08-09.md` is the repo's real "skunkworks origin"
-artifact — an ingested Gemini conversation about ReLU activation function variants, unrelated to
-the mission but the literal first thing committed here. Not yet built: any of the 4 layers'
-actual technology — this is currently a mission pitch + contact intake, not working
-infrastructure.
+**Real, decisive correction (SAGA audit, 2026-09-07): this section had gone stale months behind
+the repo's actual scope.** It used to say "this is currently a mission pitch + contact intake,
+not working infrastructure" — no longer true. Real, shipped, live infrastructure now exists:
+
+- `index.html`/`change.html` — the original static landing page + C.H.A.N.G.E. Initiative page,
+  unchanged in spirit, still `STYLE_GUIDE.md`-governed with the "dawn-glow" Prompt-o-verse header
+  art direction. Contact form posts to IDUNA's `/api/v1/carepyre/contact`.
+- `console.html` — a real, full IDUNA_PRO-backed admin/provider console: email/password login,
+  a 4-tier RBAC model (Top Admin/Operator Admin/Provider Admin/Provider Operator), mailbox and
+  SIP-extension provisioning, PGP/S-MIME encryption-at-rest, white-label branding, compliance-
+  recording, and organizations/cluster-trust administration — see `docs/HIPAA_COMPLIANCE_NORTHSTAR.md`
+  for the full design.
+- `android/` — a real SIP softphone app (JNI/PJSIP), QR-code onboarding
+  (`docs/SIP_QR_ONBOARDING_NORTHSTAR.md`).
+- `android-admin/` — a separate, white-label WebView wrapper around `console.html`
+  (`generic`/`carepyre` product flavors, same code either way).
+- `webphone.js`/`webphone.html` — a real, working browser softphone (JsSIP/WebRTC), embedded in
+  `console.html` via iframe.
+- `ops/` — real nginx, Asterisk, and Stalwart mail-server configuration backing the above.
+- `terms.html`/`privacy.html` — draft ToS/Privacy Policy, explicitly marked pending legal review.
+
+`source/gemini-transcript-2026-08-09.md` is still the repo's real "skunkworks origin" artifact —
+an ingested Gemini conversation about ReLU activation function variants, unrelated to the
+mission but the literal first thing committed here.
+
+Real, honest, still-open gaps: the "this call may be recorded" consent-announcement audio file
+doesn't exist on disk yet (`docs/GOOGLE_VOICE_FEATURES_NORTHSTAR.md` names this explicitly —
+`Playback()` is a silent no-op until it's recorded, `console.html`'s own compliance-recording
+panel now makes that self-service); the Twilio browser-phone integration is scoped
+(`docs/BROWSER_PHONE_NORTHSTAR.md`) but not built; and none of the founder's original 4-layer
+vision (Community Telecom Mesh, Autonomous Identity, Human-Centered AI Navigation, Sovereign
+Finance & Life Protection) has its own dedicated infrastructure yet — the console/SIP/mail work
+above is the real, practical substrate those layers would eventually sit on, not a layer itself.
 
 ## Founder Real-Time Direction
 
