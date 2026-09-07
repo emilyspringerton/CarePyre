@@ -9,6 +9,47 @@ let currentSession = null;
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'];
 
+// CAREPYRE-SIP-4324324 ("SIP PHONE NEEDS DTMF DIAL TONES BOTH WHEN DIALING AND ALSO IN BAND
+// WHILE IN A CALL VIA THE NUMBER PAD"). Real, standard ITU-T Q.23 DTMF row/column frequency
+// pairs -- the actual audible "beep boop" a real phone plays locally for the person pressing
+// the key. Deliberately separate from `session.sendDTMF(digit)` below (RFC 2833/4733 in-band
+// telephone-event, already real and already sent to the far end) -- that's what the OTHER party
+// hears; this is purely local feedback for whoever is pressing the button, same real distinction
+// a physical phone's own sidetone makes.
+const DTMF_FREQUENCIES = {
+  '1': [697, 1209], '2': [697, 1336], '3': [697, 1477],
+  '4': [770, 1209], '5': [770, 1336], '6': [770, 1477],
+  '7': [852, 1209], '8': [852, 1336], '9': [852, 1477],
+  '*': [941, 1209], '0': [941, 1336], '#': [941, 1477],
+};
+let dtmfAudioCtx = null;
+
+function playDtmfTone(digit) {
+  const freqs = DTMF_FREQUENCIES[digit];
+  if (!freqs) return;
+  if (!dtmfAudioCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return; // real, honest no-op: no Web Audio support, no tone -- never throw over this
+    dtmfAudioCtx = new AC();
+  }
+  if (dtmfAudioCtx.state === 'suspended') dtmfAudioCtx.resume();
+  const now = dtmfAudioCtx.currentTime;
+  const duration = 0.15;
+  const gain = dtmfAudioCtx.createGain();
+  gain.gain.setValueAtTime(0.15, now);
+  gain.gain.setValueAtTime(0.15, now + duration - 0.02);
+  gain.gain.linearRampToValueAtTime(0, now + duration);
+  gain.connect(dtmfAudioCtx.destination);
+  for (const freq of freqs) {
+    const osc = dtmfAudioCtx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    osc.connect(gain);
+    osc.start(now);
+    osc.stop(now + duration);
+  }
+}
+
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + name).classList.add('active');
@@ -27,6 +68,7 @@ function buildInCallKeypad(session) {
     const btn = document.createElement('button');
     btn.textContent = digit;
     btn.onclick = () => {
+      playDtmfTone(digit);
       if (session && session.isEstablished()) {
         session.sendDTMF(digit);
       }
@@ -178,6 +220,16 @@ document.getElementById('btn-register').addEventListener('click', () => {
     showScreen('config');
   });
 })();
+
+// "...both when dialing..." -- the dial screen is a plain text `<input type="tel">` (real,
+// deliberate: founder real-time, 2026-09-07, "i need just a dialing interface when i log in not
+// another login," about avoiding a second login screen, not about the pad's own shape), not a
+// button keypad -- so real per-digit tone feedback here means listening for each digit actually
+// typed into it, not a button press.
+document.getElementById('dial-number').addEventListener('input', (e) => {
+  const last = e.data; // the single character just inserted, per the real InputEvent spec
+  if (last && DTMF_FREQUENCIES[last]) playDtmfTone(last);
+});
 
 document.getElementById('btn-call').addEventListener('click', () => {
   const number = document.getElementById('dial-number').value.trim();

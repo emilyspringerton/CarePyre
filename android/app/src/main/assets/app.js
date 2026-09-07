@@ -12,13 +12,55 @@ const KEYS = [
   ['*', ''], ['0', '+'], ['#', ''],
 ];
 
+// CAREPYRE-SIP-4324324 ("SIP PHONE NEEDS DTMF DIAL TONES BOTH WHEN DIALING AND ALSO IN BAND
+// WHILE IN A CALL VIA THE NUMBER PAD"). Real, standard ITU-T Q.23 DTMF row/column frequency
+// pairs -- the actual audible "beep boop" a real phone plays locally for whoever is pressing the
+// key. Deliberately separate from Android.sendDtmf(digit) below (AudioCallSession's own real
+// RFC 4733 telephone-event sender, already sent to the far end) -- that's what the OTHER party
+// hears; this is purely local feedback, same real distinction a physical phone's own sidetone
+// makes. Android's own WebView (Chromium-based) has supported the Web Audio API for years -- no
+// native bridge call needed for this, unlike the real SIP signaling above.
+const DTMF_FREQUENCIES = {
+  '1': [697, 1209], '2': [697, 1336], '3': [697, 1477],
+  '4': [770, 1209], '5': [770, 1336], '6': [770, 1477],
+  '7': [852, 1209], '8': [852, 1336], '9': [852, 1477],
+  '*': [941, 1209], '0': [941, 1336], '#': [941, 1477],
+};
+let dtmfAudioCtx = null;
+
+function playDtmfTone(digit) {
+  const freqs = DTMF_FREQUENCIES[digit];
+  if (!freqs) return;
+  if (!dtmfAudioCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return; // real, honest no-op: no Web Audio support, no tone -- never throw over this
+    dtmfAudioCtx = new AC();
+  }
+  if (dtmfAudioCtx.state === 'suspended') dtmfAudioCtx.resume();
+  const now = dtmfAudioCtx.currentTime;
+  const duration = 0.15;
+  const gain = dtmfAudioCtx.createGain();
+  gain.gain.setValueAtTime(0.15, now);
+  gain.gain.setValueAtTime(0.15, now + duration - 0.02);
+  gain.gain.linearRampToValueAtTime(0, now + duration);
+  gain.connect(dtmfAudioCtx.destination);
+  for (const freq of freqs) {
+    const osc = dtmfAudioCtx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    osc.connect(gain);
+    osc.start(now);
+    osc.stop(now + duration);
+  }
+}
+
 function buildKeypad() {
   const grid = document.getElementById('keypad');
   for (const [digit, sub] of KEYS) {
     const btn = document.createElement('button');
     btn.className = 'key';
     btn.innerHTML = digit + (sub ? '<span class="sub">' + sub + '</span>' : '');
-    btn.onclick = () => appendDigit(digit);
+    btn.onclick = () => { playDtmfTone(digit); appendDigit(digit); };
     grid.appendChild(btn);
   }
 }
@@ -34,6 +76,7 @@ function buildInCallKeypad() {
     btn.className = 'key';
     btn.textContent = digit;
     btn.onclick = () => {
+      playDtmfTone(digit);
       if (typeof Android !== 'undefined' && Android.sendDtmf) {
         Android.sendDtmf(digit);
       }
