@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Overridden per product flavor via resValue() in app/build.gradle.kts -- this is only a
+         safety-net default so the module still resolves @string/app_name if a flavor is ever
+         forgotten. -->
+    <string name="app_name">IDUNA Pro Admin</string>
+</resources>

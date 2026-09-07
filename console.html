@@ -228,7 +228,7 @@
 <body>
 
 <header>
-  <div class="brand"><span class="dot"></span> CarePyre Console</div>
+  <div class="brand"><span class="dot"></span> <span id="brand-name">CarePyre</span> Console</div>
   <a href="/index.html">carepyre.org</a>
 </header>
 
@@ -536,6 +536,60 @@
           </details>
         </div>
 
+        <!-- Branding admin panel (CP-WHITELABEL-1, founder real-time: "it needs to be both white
+             labeled first then made into carepyre"): configures the general, per-instance
+             IDUNA_PRO branding (app name/tagline/colors/logo) this same console.html reads at
+             load via applyBranding() below. Gated on branding.admin -- CarePyre is the first
+             tenant to actually set these away from IDUNA_PRO's own generic defaults, not a
+             special case in the API. -->
+        <div class="card hidden" id="branding-card" style="margin-top:1.5rem;">
+          <h2>White-label branding</h2>
+          <p class="sub">Configures the app name, tagline, and colors this console (and any other
+            IDUNA_PRO-backed client) renders itself with. Applies immediately on save.</p>
+          <div id="branding-error" class="error hidden"></div>
+          <div id="branding-success" class="success-msg hidden"></div>
+          <form id="branding-form">
+            <label for="branding-app-name">App name</label>
+            <input id="branding-app-name" type="text" placeholder="CarePyre" required>
+            <label for="branding-tagline">Tagline</label>
+            <input id="branding-tagline" type="text" placeholder="From the Ashes of Crisis to Sovereign Infrastructure">
+            <label for="branding-primary-color">Primary color</label>
+            <input id="branding-primary-color" type="color" value="#3fa9dc">
+            <label for="branding-accent-color">Accent color</label>
+            <input id="branding-accent-color" type="color" value="#ff8a3d">
+            <button type="submit">Save branding</button>
+          </form>
+        </div>
+
+        <!-- Compliance recording admin panel (CP-COMPLIANCE-REC-1): records/replaces the "this
+             call may be recorded" consent-announcement audio directly from the browser's own
+             microphone -- closes the real gap left after CAREPYRE-9311 shipped inbound call
+             recording without ever producing this announcement file. Gated on
+             compliance.recording.manage. The real, honest remaining step (converting this to a
+             telephony-ready format and copying it into the live Asterisk box) is a separate,
+             deliberately-manual sudo-queue step -- this panel's job is just making the audio
+             exist and be auditable, not wiring the dialplan. -->
+        <div class="card hidden" id="compliance-card" style="margin-top:1.5rem;">
+          <h2>Compliance recording</h2>
+          <p class="sub">Record or upload the "this call may be recorded" consent announcement
+            played at the start of every inbound call. Recording a new one replaces the active
+            announcement immediately for playback/download here -- getting it live on the phone
+            system is a separate, manual deploy step.</p>
+          <div id="compliance-error" class="error hidden"></div>
+          <div id="compliance-success" class="success-msg hidden"></div>
+          <div id="compliance-current" style="margin-bottom:1rem;"><p class="sub" style="margin:0;">Loading&hellip;</p></div>
+          <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+            <button type="button" class="small" id="compliance-record-btn">Record from microphone</button>
+            <button type="button" class="small secondary hidden" id="compliance-stop-btn" style="width:auto;">Stop recording</button>
+            <label for="compliance-file-input" class="small" style="display:inline-flex;align-items:center;padding:0.4rem 0.8rem;border:2px solid var(--blue);border-radius:999px;color:var(--blue-dark);cursor:pointer;">Upload a file instead</label>
+            <input id="compliance-file-input" type="file" accept="audio/*" class="hidden">
+          </div>
+          <div id="compliance-preview-wrap" class="hidden" style="margin-top:1rem;">
+            <audio id="compliance-preview" controls style="width:100%;"></audio>
+            <button type="button" id="compliance-save-btn" style="margin-top:0.6rem;">Save as the active announcement</button>
+          </div>
+        </div>
+
         <!-- CP-HIPAA-1 (founder real-time, 2026-09-07: "we can allow providers to create email
              accounts for participants"): a provider's own scoped panel -- gated on
              mail-accounts.provision, a real, least-privilege role distinct from users.admin.
@@ -739,6 +793,8 @@
 
     const isAdmin = perms.includes('users.admin');
     const isTwilioAdmin = perms.includes('twilio.admin');
+    const isBrandingAdmin = perms.includes('branding.admin');
+    const isComplianceAdmin = perms.includes('compliance.recording.manage');
     // CP-HIPAA-1: mail-accounts.provision is a real, least-privilege role distinct from
     // users.admin -- a provider gets their own "Participants" panel below, not the full
     // Users/Mail-accounts admin panels (which expose every other participant, SIP assignment,
@@ -747,11 +803,15 @@
     document.getElementById('admin-card').classList.toggle('hidden', !isAdmin);
     document.getElementById('twilio-card').classList.toggle('hidden', !isTwilioAdmin);
     document.getElementById('mail-accounts-card').classList.toggle('hidden', !isAdmin);
+    document.getElementById('branding-card').classList.toggle('hidden', !isBrandingAdmin);
+    document.getElementById('compliance-card').classList.toggle('hidden', !isComplianceAdmin);
     document.getElementById('provider-card').classList.toggle('hidden', !isProvider);
-    document.getElementById('nav-admin').classList.toggle('hidden', !(isAdmin || isTwilioAdmin || isProvider));
+    document.getElementById('nav-admin').classList.toggle('hidden', !(isAdmin || isTwilioAdmin || isBrandingAdmin || isComplianceAdmin || isProvider));
     if (isAdmin) loadAdminUsers();
     if (isTwilioAdmin) loadTwilioStatus();
     if (isAdmin) loadMailAccounts();
+    if (isBrandingAdmin) loadBrandingSettings();
+    if (isComplianceAdmin) loadComplianceRecording();
     if (isProvider) loadProviderMailboxes();
   }
 
@@ -1355,6 +1415,167 @@
     }
   });
 
+  // ---- White-label branding (CP-WHITELABEL-1) ----
+  function brandingMessage(ok, text) {
+    const errEl = document.getElementById('branding-error');
+    const okEl = document.getElementById('branding-success');
+    errEl.classList.add('hidden');
+    okEl.classList.add('hidden');
+    (ok ? okEl : errEl).textContent = text;
+    (ok ? okEl : errEl).classList.remove('hidden');
+  }
+
+  // applyBranding -- runs on EVERY page load (not just for branding.admin holders), unauthenticated,
+  // before sign-in even resolves: this is what makes the console a real white-label template
+  // instead of a CarePyre-only page. Silently keeps this file's own hardcoded CarePyre defaults
+  // (the CSS :root values, "CarePyre Console" title/brand text) if the fetch fails or the
+  // instance has never configured branding -- CarePyre's own current look IS this template's
+  // default fallback, not a separate code path.
+  async function applyBranding() {
+    try {
+      const res = await fetch(API_BASE + '/branding');
+      if (!res.ok) return;
+      const b = await res.json();
+      if (b.app_name) {
+        document.title = b.app_name + ' Console';
+        document.getElementById('brand-name').textContent = b.app_name;
+      }
+      const root = document.documentElement.style;
+      if (b.primary_color) root.setProperty('--blue', b.primary_color);
+      if (b.accent_color) root.setProperty('--orange', b.accent_color);
+    } catch (err) {
+      // Real, deliberate no-op: a branding-fetch failure should never block sign-in.
+    }
+  }
+
+  async function loadBrandingSettings() {
+    try {
+      const res = await fetch(API_BASE + '/branding');
+      if (!res.ok) return;
+      const b = await res.json();
+      document.getElementById('branding-app-name').value = b.app_name || '';
+      document.getElementById('branding-tagline').value = b.tagline || '';
+      if (b.primary_color) document.getElementById('branding-primary-color').value = b.primary_color;
+      if (b.accent_color) document.getElementById('branding-accent-color').value = b.accent_color;
+    } catch (err) {
+      brandingMessage(false, 'Could not load current branding: ' + err.message);
+    }
+  }
+
+  document.getElementById('branding-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = {
+      app_name: document.getElementById('branding-app-name').value.trim(),
+      tagline: document.getElementById('branding-tagline').value.trim(),
+      primary_color: document.getElementById('branding-primary-color').value,
+      accent_color: document.getElementById('branding-accent-color').value,
+    };
+    try {
+      const res = await fetch(API_BASE + '/branding', {
+        method: 'PUT',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+        body: JSON.stringify(payload),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        brandingMessage(false, body.error || ('Could not save branding (HTTP ' + res.status + ').'));
+        return;
+      }
+      brandingMessage(true, 'Branding saved -- applying now.');
+      applyBranding();
+    } catch (err) {
+      brandingMessage(false, 'Could not reach the console API: ' + err.message);
+    }
+  });
+
+  // ---- Compliance recording (CP-COMPLIANCE-REC-1) ----
+  function complianceMessage(ok, text) {
+    const errEl = document.getElementById('compliance-error');
+    const okEl = document.getElementById('compliance-success');
+    errEl.classList.add('hidden');
+    okEl.classList.add('hidden');
+    (ok ? okEl : errEl).textContent = text;
+    (ok ? okEl : errEl).classList.remove('hidden');
+  }
+
+  let complianceRecorder = null;
+  let complianceChunks = [];
+  let complianceBlob = null;
+
+  async function loadComplianceRecording() {
+    const el = document.getElementById('compliance-current');
+    try {
+      const res = await fetch(API_BASE + '/compliance/recording', { headers: authHeaders() });
+      if (res.status === 404) {
+        el.innerHTML = '<p class="sub" style="margin:0;">No consent announcement recorded yet.</p>';
+        return;
+      }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      el.innerHTML = '<p class="sub" style="margin:0 0 0.4rem;">Current active announcement:</p><audio controls style="width:100%;" src="' + url + '"></audio>';
+    } catch (err) {
+      el.innerHTML = '<p class="error" style="margin:0;">Could not load the current recording: ' + esc(err.message) + '</p>';
+    }
+  }
+
+  function complianceSetPreview(blob) {
+    complianceBlob = blob;
+    const preview = document.getElementById('compliance-preview');
+    preview.src = URL.createObjectURL(blob);
+    document.getElementById('compliance-preview-wrap').classList.remove('hidden');
+  }
+
+  document.getElementById('compliance-record-btn').addEventListener('click', async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      complianceChunks = [];
+      complianceRecorder = new MediaRecorder(stream);
+      complianceRecorder.ondataavailable = (e) => { if (e.data.size > 0) complianceChunks.push(e.data); };
+      complianceRecorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        complianceSetPreview(new Blob(complianceChunks, { type: 'audio/webm;codecs=opus' }));
+      };
+      complianceRecorder.start();
+      document.getElementById('compliance-record-btn').classList.add('hidden');
+      document.getElementById('compliance-stop-btn').classList.remove('hidden');
+    } catch (err) {
+      complianceMessage(false, 'Could not access the microphone: ' + err.message);
+    }
+  });
+
+  document.getElementById('compliance-stop-btn').addEventListener('click', () => {
+    if (complianceRecorder && complianceRecorder.state !== 'inactive') complianceRecorder.stop();
+    document.getElementById('compliance-record-btn').classList.remove('hidden');
+    document.getElementById('compliance-stop-btn').classList.add('hidden');
+  });
+
+  document.getElementById('compliance-file-input').addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) complianceSetPreview(file);
+  });
+
+  document.getElementById('compliance-save-btn').addEventListener('click', async () => {
+    if (!complianceBlob) return;
+    try {
+      const res = await fetch(API_BASE + '/compliance/recording', {
+        method: 'PUT',
+        headers: Object.assign({ 'Content-Type': complianceBlob.type || 'application/octet-stream' }, authHeaders()),
+        body: complianceBlob,
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        complianceMessage(false, body.error || ('Could not save recording (HTTP ' + res.status + ').'));
+        return;
+      }
+      complianceMessage(true, 'Saved as the active announcement (' + body.bytes + ' bytes).');
+      document.getElementById('compliance-preview-wrap').classList.add('hidden');
+      loadComplianceRecording();
+    } catch (err) {
+      complianceMessage(false, 'Could not reach the console API: ' + err.message);
+    }
+  });
+
   // ---- Mail accounts (founder real-time, 2026-09-05: "a way to provision accounts from the
   // carepyre admin console") ----
   function mailAccountMessage(ok, text) {
@@ -1513,6 +1734,8 @@
     document.getElementById('admin-card').classList.add('hidden');
     document.getElementById('twilio-card').classList.add('hidden');
     document.getElementById('mail-accounts-card').classList.add('hidden');
+    document.getElementById('branding-card').classList.add('hidden');
+    document.getElementById('compliance-card').classList.add('hidden');
     document.getElementById('provider-card').classList.add('hidden');
     document.getElementById('nav-admin').classList.add('hidden');
     showPage('mail');
@@ -1522,6 +1745,7 @@
     setMode('login');
   });
 
+  applyBranding();
   setMode('login');
   loadConsole();
 </script>

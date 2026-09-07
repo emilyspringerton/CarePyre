@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- INTERNET: the whole app is a WebView pointed at a remote console (BuildConfig.CONSOLE_URL,
+         set per product flavor). RECORD_AUDIO: the console's own compliance-recording panel
+         (CP-COMPLIANCE-REC-1) uses the browser's getUserMedia/MediaRecorder APIs -- WebView needs
+         this OS permission granted (and MainActivity's own WebChromeClient.onPermissionRequest
+         override, see there) for the in-page mic prompt to ever succeed at all. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <application
+        android:allowBackup="true"
+        android:label="@string/app_name"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+    </application>
+
+</manifest>
