@@ -1,3 +1,7 @@
+## 2026-09-07
+
+- Geo-restricted mail.carepyre.org's webmail/IMAPS/admin panel to US/MX/CA via a UFW-hooked ipset; SMTP (25) left open to avoid dropping legitimate inbound mail. Verified live. (sess-20260905-0720-ec33e7c5)
+
 ## 2026-09-06
 - Web Phone auto-connects per-user (from webphone-credentials) and only shows when a real webphone identity exists for that user; webphone.js supports query-param auto-register. (sess-20260905-0720-ec33e7c5)
 
