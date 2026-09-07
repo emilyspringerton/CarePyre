@@ -116,3 +116,66 @@ honestly, not oversold as "HIPAA compliant."
   specifically.
 - `EMILY/BACKLOG.md` — the section logging this pass's real, completed work with commit
   references.
+
+## Update (2026-09-07): real multi-organization "provider cluster" trust model
+
+Founder, real-time, the concrete worked example this section exists to serve: "there may be a
+several organizations who have service agreements with each other in that case the admins from
+that collective should be able to administer participants from that cluster of providers... a
+health care provider giving a participant services creates an email account for a user -- the
+service navigator at the shelter that participant stays at needs to be able to password reset
+that participant to do the work of a service navigator in terms of providing services towards
+the provisioning of housing." Explicit scope decision from the same message: "it doesn't need to
+be totally granular yet... but building towards that with a batteries included happy path" and
+"we will assume the provider cluster is a trusted network for now until we bring the service to
+multiple markets."
+
+**Real, shipped, in IDUNA_PRO** (the general multi-tenant platform, not CarePyre-specific code --
+same "built once, general" precedent the GDPR pipeline and RBAC tiers above already established):
+
+- **A real `organizations` table** with a bare, nullable `cluster_id` -- two organizations
+  sharing a real, non-null `cluster_id` trust each other completely for participant
+  administration. Deliberately NOT a many-to-many membership table -- "we will assume the
+  provider cluster is a trusted network for now" reads as one flat trust boundary per real
+  deployment/market today. A genuine `org_cluster_membership` table with per-relationship
+  permissions is the real, later "zero-ish trust" granularity step the founder's own message
+  explicitly named as a future direction, named honestly here, not built.
+- **`local_users.org_id`** -- which organization a provider/admin belongs to, or which
+  organization onboarded a participant (the SAME field, dual real meaning by role). "Batteries
+  included happy path": a provider never picks an organization by hand when onboarding a
+  participant -- it's stamped automatically from the provider's own `org_id` at account-creation
+  time.
+- **The real worked example itself, shipped**: `PATCH /api/v1/users/{uid} {"password": "..."}`
+  is now reachable by a plain Provider Operator (not just a Provider Admin), gated on the
+  target's `org_id` sharing a real cluster with the caller's own -- exactly "the service
+  navigator at the shelter... needs to be able to password reset that participant." Every other
+  field (email, display_name, status) stays out of scope for this tier, the real, deliberate
+  "not totally granular yet" narrow first slice.
+- **The same cluster-trust extended to mailbox/SIP visibility and management**
+  (`mail_account_credentials.owning_org_id`, `sip_accounts.owning_org_id`, snapshotted at
+  provisioning time from the creator's own org, same "snapshot, don't live-join" idiom
+  `created_by` already established) -- a cluster-mate provider can list, reveal, and provision
+  mail/SIP for a participant onboarded by a different, cluster-sharing organization.
+- **"Intense logging... against fraud waste and abuse"**: a real, dedicated
+  `cross_org_access_log` SQL table (not folded into the general event log -- a real FWA review
+  needs a plain, fast, directly-queryable "show me every cross-org touch of participant X" or
+  "every cross-org action actor Y has ever taken"), populated on every cross-org password reset
+  and mailbox-password reveal. Same-org actions and users.admin/operator-admin actions are
+  deliberately NOT logged here -- this table's own real job is exactly the boundary the
+  cluster-trust model introduces, not a general-purpose activity log every other event source
+  already covers.
+- **A real, safe, backward-compatible default**: `org_id`/`owning_org_id` are 0 for every
+  account that predates this migration, and 0 is explicitly defined to never "share a cluster"
+  with anything, including another 0 -- nothing changes for a deployment that never creates an
+  organization, and two unassigned accounts are never trivially treated as trusting each other.
+- **Minimal admin tooling**: `GET/POST /api/v1/organizations`, `PATCH /api/v1/organizations/{id}`
+  (reassign `cluster_id`) -- real, deliberate v0 scope: renaming or deleting an organization is
+  real, separate, not-yet-needed work, named honestly rather than built speculatively.
+
+9 new tests across the cluster-trust worked example (same-cluster password reset, denial across
+an unrelated org, same-org actions correctly NOT logged as cross-org, the 0-never-shares-with-0
+safety rule, cluster-mate mailbox/SIP visibility and provisioning, organizations CRUD). `go
+build/vet/test ./...` clean. Live-verified: rebuilt and restarted the real, running
+`idunapro.service` backing this console, confirmed the new schema landed
+(`organizations`/`cross_org_access_log` tables, `local_users.org_id` column) against the live
+database, not just in a test environment.
