@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy — CarePyre</title>
+<meta name="description" content="CarePyre's Privacy Policy: what data we collect, why we never read your mail, and what happens if we're legally compelled to disclose it.">
+<style>
+  :root {
+    --white: #FFFFFF;
+    --pale-blue: #EAF6FB;
+    --sky: #3FA9DC;
+    --sky-dark: #1D7EA6;
+    --cyan: #22D3EE;
+    --orange: #FF8A3D;
+    --text: #1A2733;
+    --text-muted: #5B6B76;
+    --border: #D6E8F0;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--white);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+  a { color: var(--sky-dark); }
+
+  header {
+    max-width: none; padding: 4rem 1.5rem 2.5rem;
+    text-align: center;
+    background: linear-gradient(rgba(255,255,255,0.9), rgba(255,255,255,0.9)),
+                url("images/dawn-glow.jpg") center top / cover no-repeat;
+  }
+  header .inner { max-width: 820px; margin: 0 auto; }
+  .wordmark {
+    font-size: 0.85rem; letter-spacing: 0.25em; text-transform: uppercase;
+    color: var(--sky); margin-bottom: 1.5rem; font-weight: 600;
+  }
+  .wordmark a { color: inherit; text-decoration: none; }
+  h1 {
+    font-size: clamp(2rem, 5vw, 2.8rem);
+    margin: 0 0 0.75rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--sky-dark);
+  }
+  .tagline {
+    font-size: clamp(1rem, 2.1vw, 1.15rem);
+    color: var(--text-muted);
+    max-width: 620px; margin: 0 auto;
+    font-weight: 400;
+  }
+  .updated { font-size: 0.85rem; color: var(--text-muted); margin-top: 1rem; }
+
+  .draft-notice {
+    max-width: 820px; margin: 0 auto; padding: 1rem 1.5rem;
+  }
+  .draft-notice .box {
+    background: #FFF6EC; border: 1px solid var(--orange); border-radius: 10px;
+    padding: 1rem 1.25rem; font-size: 0.92rem; color: #7A4A1D;
+  }
+  .draft-notice .box strong { color: var(--orange); }
+
+  section { max-width: 820px; margin: 0 auto; padding: 2rem 1.5rem; }
+  .section-label {
+    font-size: 0.75rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--sky); margin-bottom: 0.5rem; font-weight: 700;
+  }
+  h2 {
+    font-size: clamp(1.3rem, 3vw, 1.65rem); margin: 2rem 0 0.6rem;
+    color: var(--sky-dark);
+  }
+  h2:first-of-type { margin-top: 0; }
+  h3 { font-size: 1.05rem; margin: 1.4rem 0 0.4rem; color: var(--text); }
+  .rule { width: 40px; height: 3px; background: var(--cyan); border-radius: 2px; margin: 0.6rem 0 1.2rem; }
+  p, li { color: var(--text); font-size: 0.98rem; }
+  ul { padding-left: 1.3rem; }
+  li { margin-bottom: 0.5rem; }
+
+  .callout {
+    background: var(--pale-blue); border-left: 4px solid var(--sky);
+    border-radius: 0 10px 10px 0; padding: 1rem 1.25rem; margin: 1.25rem 0;
+    font-size: 0.95rem;
+  }
+  .callout.warn { background: #FFF6EC; border-left-color: var(--orange); }
+  .callout strong { color: var(--sky-dark); }
+  .callout.warn strong { color: var(--orange); }
+
+  footer {
+    max-width: 820px; margin: 0 auto; padding: 3rem 1.5rem 4rem;
+    border-top: 1px solid var(--border); text-align: center;
+    color: var(--text-muted); font-size: 0.9rem;
+  }
+  footer a { color: var(--sky-dark); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="inner">
+    <div class="wordmark"><a href="/">CarePyre</a></div>
+    <h1>Privacy Policy</h1>
+    <p class="tagline">
+      What we collect, why we never read your mail, and what we're required to do if we're
+      legally compelled to hand it over.
+    </p>
+    <p class="updated">Effective 2026-09-07</p>
+  </div>
+</header>
+
+<div class="draft-notice">
+  <div class="box">
+    <strong>Draft, not yet reviewed by legal counsel.</strong> This page describes our real,
+    current data practices and intent honestly and in plain language. It is not yet a
+    lawyer-reviewed legal instrument — treat it as our current, good-faith commitment, and
+    expect it to be formalized (and possibly revised) with real legal review before CarePyre
+    scales beyond its initial community deployment.
+  </div>
+</div>
+
+<section>
+  <div class="section-label">Overview</div>
+  <h2>The short version</h2>
+  <div class="rule"></div>
+  <p>
+    CarePyre provides community members and their case workers, clinicians, and other support
+    providers with durable email accounts and phone service that survive whatever crisis brought
+    someone to us. We built this policy around one real, honest tension: <strong>we don't look at
+    your email, but we are a real organization subject to real legal process</strong> — if we are
+    served with a valid subpoena or court order for a specific account's contents, and that
+    account isn't encrypted, we are legally required to comply. That's exactly why we forcefully
+    encourage everyone to turn on PGP encryption (see "Encryption" below) — once your mail is
+    encrypted with a key only you hold, we have nothing readable to hand over even if compelled.
+  </p>
+</section>
+
+<section>
+  <h2>What we collect</h2>
+  <div class="rule"></div>
+  <ul>
+    <li><strong>Account information:</strong> the email address and display name on your
+    CarePyre-issued mailbox, and (if you use our SIP phone service) your assigned phone
+    extension.</li>
+    <li><strong>Mail contents and metadata:</strong> the emails sent and received through your
+    CarePyre mailbox, stored on our mail server (mail.carepyre.org) until you delete them or your
+    account is closed.</li>
+    <li><strong>Mailbox credentials:</strong> if a provider or administrator provisions your
+    mailbox on your behalf, we store your mailbox password in encrypted form (AES-256-GCM) so it
+    can be retrieved and given to you, or so your webmail session can connect automatically. This
+    is a deliberate design choice to make onboarding actually work for people who may not be in a
+    position to manage a generated password themselves — see "Access controls" below for who can
+    see it.</li>
+    <li><strong>Usage and security logs:</strong> login timestamps, IP-based access records, and
+    similar technical logs used to keep the service secure and investigate abuse.</li>
+  </ul>
+  <div class="callout">
+    <strong>We do not read the contents of your email.</strong> CarePyre staff do not open,
+    scan, or review your mail as a matter of course. Automated spam/abuse filtering may process
+    mail content the same way any mail provider's spam filter does.
+  </div>
+</section>
+
+<section>
+  <h2>Who can create or manage an account on your behalf</h2>
+  <div class="rule"></div>
+  <p>
+    If you're a participant, a provider you're working with (a case worker, clinician, or other
+    support staff member CarePyre has vetted) may create and manage your CarePyre email account
+    for you. This is intentional — many people arrive at CarePyre without the time, stability, or
+    access needed to set up their own account, and we'd rather meet people where they are than
+    put that burden on them during a crisis.
+  </p>
+  <h3>Access controls (least necessary, not everyone sees everything)</h3>
+  <ul>
+    <li>A provider can only see and manage the mailboxes <em>they themselves created</em> — never
+    every participant in the system. This follows the same "minimum necessary" principle used in
+    healthcare privacy law: access is scoped to what someone actually needs for their work, not
+    granted broadly by default.</li>
+    <li>A small number of CarePyre administrators can see and manage every account, for the
+    operational and security tasks running the service actually requires (support requests,
+    abuse response, legal compliance).</li>
+    <li>Every mailbox creation and password reveal is tied to the specific person who performed
+    it, not anonymous.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Encryption</h2>
+  <div class="rule"></div>
+  <p>
+    Every connection to your mailbox (webmail, IMAP, the console) is encrypted in transit via
+    TLS. Whether your <em>stored</em> mail is also encrypted at rest is up to you:
+  </p>
+  <ul>
+    <li>Add a real OpenPGP public key or S/MIME certificate to your account (from the Mail page
+    in the console), and your mail starts being encrypted at rest automatically — CarePyre never
+    sees or holds your private key, so we could not read your mail even if we wanted to.</li>
+    <li>Until you do, your mail is stored unencrypted, and — like any mail provider — we would be
+    able to read it if we chose to, and would be required to produce it in readable form if
+    legally compelled to.</li>
+  </ul>
+  <div class="callout warn">
+    <strong>We forcefully encourage encryption. We do not require it (yet).</strong> Nothing
+    currently blocks you from using an unencrypted mailbox — we'd rather you have a working
+    account today than no account while you sort out a PGP key. But we will keep reminding you
+    (a persistent notice appears in the console until a key is on file) because the difference
+    is real: an encrypted mailbox is one we structurally cannot hand over readable, even under a
+    subpoena.
+  </div>
+</section>
+
+<section>
+  <h2>When we disclose data</h2>
+  <div class="rule"></div>
+  <p>We do not sell your data, and we do not share it with advertisers. We disclose account
+  data only:</p>
+  <ul>
+    <li>When you ask us to (e.g., handing your own mailbox password to you, or exporting your
+    own data on request).</li>
+    <li>To a provider who created your account, scoped to the account(s) they created.</li>
+    <li><strong>When legally compelled</strong> — a valid subpoena, court order, or other binding
+    legal process directed at a specific account. If your mail is encrypted at rest with your own
+    key, we have nothing readable to produce even in this case.</li>
+  </ul>
+  <p>
+    Where legally able to, we will make a reasonable effort to notify the affected account holder
+    before complying with a legal demand for their data.
+  </p>
+</section>
+
+<section>
+  <h2>A note on health information and HIPAA</h2>
+  <div class="rule"></div>
+  <p>
+    CarePyre is a technology and infrastructure provider, not a health care provider. If a
+    provider using CarePyre-issued accounts is a HIPAA covered entity (for example, a licensed
+    clinician or health care organization) and uses those accounts to communicate protected
+    health information, that provider's own HIPAA obligations apply to how they use the service
+    — and CarePyre may need to enter into a Business Associate Agreement with that provider,
+    consistent with HIPAA's own requirements for organizations handling protected health
+    information on a covered entity's behalf. We take this seriously and are building our
+    technical safeguards (encryption, least-necessary access, audit trails, and the data
+    export/deletion tools described below) with that real possibility in mind — but this
+    paragraph is a description of our approach, not a legal determination that CarePyre is or
+    isn't a HIPAA business associate in any given relationship. If you're a provider with
+    questions about whether a BAA applies to your use of CarePyre, please reach out (see
+    "Contact" below) before sending anything you consider protected health information through
+    an unencrypted account.
+  </p>
+</section>
+
+<section>
+  <h2>Your rights over your own data</h2>
+  <div class="rule"></div>
+  <ul>
+    <li><strong>Access and export:</strong> you can request a copy of the data we hold about your
+    account.</li>
+    <li><strong>Deletion:</strong> you can request that your account and its data be deleted.
+    Because our systems are built to keep an auditable record of what happened (so we can
+    investigate abuse and demonstrate compliance), a deletion request removes and redacts your
+    personal information — email address, display name, password, message contents — rather than
+    erasing the fact that an account once existed; this is the same real distinction most
+    regulated systems draw between "erase my personal data" and "pretend this never happened."
+  </li>
+    <li>To exercise either right, contact us (see "Contact" below) or, if you're a provider's
+    participant, ask the provider who manages your account.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Data retention</h2>
+  <div class="rule"></div>
+  <p>
+    We keep your account and mail for as long as your account is active. If your account is
+    closed or you request deletion, we follow the deletion process described above. Security and
+    access logs are retained for a limited period for abuse investigation and are not kept
+    indefinitely.
+  </p>
+</section>
+
+<section>
+  <h2>Changes to this policy</h2>
+  <div class="rule"></div>
+  <p>
+    We'll update the date at the top of this page when we make changes, and we'll make a
+    reasonable effort to notify active account holders of any change that materially affects how
+    their data is handled.
+  </p>
+</section>
+
+<section>
+  <h2>Contact</h2>
+  <div class="rule"></div>
+  <p>
+    Questions about this policy, or want to exercise your access/deletion rights? Reach us
+    through the contact form on <a href="/">carepyre.org</a>.
+  </p>
+</section>
+
+<footer>
+  <p>CarePyre Trust · Pontiac, Oakland County, Michigan</p>
+  <p><a href="/terms.html">Terms of Service</a> · <a href="/">Back to CarePyre</a></p>
+</footer>
+
+</body>
+</html>

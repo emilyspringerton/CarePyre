@@ -253,6 +253,10 @@
       <span id="toggle-to-register-wrap">New to CarePyre? <button id="toggle-to-register">Create an account</button></span>
       <span id="toggle-to-login-wrap" class="hidden">Already have an account? <button id="toggle-to-login">Sign in</button></span>
     </div>
+    <p class="sub" style="margin-top:1rem;font-size:0.8rem;">
+      By continuing you agree to CarePyre's <a href="/terms.html" target="_blank" rel="noopener">Terms of Service</a>
+      and <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.
+    </p>
   </div>
 </main>
 
@@ -307,6 +311,19 @@
         </div>
 
         <div id="mail-app-wrap" class="hidden mail-layout" data-view="list">
+          <!-- CP-HIPAA-1 (founder real-time, 2026-09-07): "we forcefully encourage the pgp
+               integration" -- forceful encouragement, not a hard block: nothing here stops
+               anyone from sending or reading mail unencrypted, it just refuses to let the risk
+               stay invisible. Shown/hidden by loadEncryptionStatus based on the real, current
+               /api/v1/mail/encryption state -- not a one-time dismissible tip. -->
+          <div id="unencrypted-banner" class="hidden" style="background:#3a1f1f;border:1px solid var(--error);border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;display:flex;gap:0.75rem;align-items:center;justify-content:space-between;flex-wrap:wrap;">
+            <p class="sub" style="margin:0;color:#f5b8b8;">
+              <strong>This mailbox is not encrypted at rest.</strong> CarePyre staff never read your
+              mail -- but if this account is ever subpoenaed, unencrypted mail is readable and must
+              be handed over as-is. Add a PGP key and CarePyre can no longer read it either way.
+            </p>
+            <button type="button" id="unencrypted-banner-btn" class="small">Secure my mailbox</button>
+          </div>
           <div class="mail-list-pane">
             <div class="mail-list-pane-header">
               <h2 style="margin:0;">Inbox</h2>
@@ -418,7 +435,7 @@
                encrypted until a real OpenPGP public key or S/MIME certificate is on file --
                there's no server-side switch. Pasting a key here IS the automatic trigger: the
                moment it's added, encryption turns on immediately, no separate step. -->
-          <details class="section">
+          <details class="section" open>
             <summary>Mail encryption at rest</summary>
             <div class="body">
               <div id="enc-status"><p class="sub" style="margin:0;">Loading&hellip;</p></div>
@@ -442,13 +459,16 @@
       <div class="page" id="page-admin">
         <div class="card hidden" id="admin-card">
           <h2>Users</h2>
-          <p class="sub">Assign a SIP account, provision a mailbox, or reset a password for any user.</p>
+          <p class="sub">Assign a SIP account, provision a mailbox, or reset a password for any user.
+            Check "Provider" to let a user create and manage mailboxes for their own participants
+            without granting them full admin (CP-HIPAA-1 -- least-privilege access, not a
+            nice-to-have).</p>
           <div id="admin-error" class="error hidden"></div>
           <div id="admin-success" class="success-msg hidden"></div>
           <div style="overflow-x:auto;">
             <table>
               <thead>
-                <tr><th>UID</th><th>Email</th><th>Status</th><th>SIP extension</th><th>Mailbox</th><th></th></tr>
+                <tr><th>UID</th><th>Email</th><th>Status</th><th>Provider</th><th>SIP extension</th><th>Mailbox</th><th></th></tr>
               </thead>
               <tbody id="admin-users-body"></tbody>
             </table>
@@ -511,6 +531,50 @@
               <div id="mail-account-created" class="hidden" style="margin-top:0.8rem;">
                 <div class="id-row"><span class="k">Email</span><span class="v" id="mail-account-created-email"></span></div>
                 <div class="id-row"><span class="k">Password</span><span class="v" id="mail-account-created-password"></span></div>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <!-- CP-HIPAA-1 (founder real-time, 2026-09-07: "we can allow providers to create email
+             accounts for participants"): a provider's own scoped panel -- gated on
+             mail-accounts.provision, a real, least-privilege role distinct from users.admin.
+             Creates BOTH the participant's IDUNA_PRO identity (POST /api/v1/users, now reachable
+             by this permission too) and their linked mailbox (POST /api/v1/mail-accounts) in one
+             flow, since a mailbox needs a local_uid to link to and a provider has no other way to
+             get one. List/reveal-password are server-scoped to mailboxes THIS provider created
+             (HIPAA's own "minimum necessary" principle) -- a provider never sees any OTHER
+             provider's participants. -->
+        <div class="card hidden" id="provider-card">
+          <h2>Participants</h2>
+          <p class="sub">Create a CarePyre email account for a participant you're working with.
+            You'll only ever see the participants you create here -- not anyone else's.</p>
+          <div id="provider-error" class="error hidden"></div>
+          <div id="provider-success" class="success-msg hidden"></div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead>
+                <tr><th>Email</th><th>Created</th><th></th></tr>
+              </thead>
+              <tbody id="provider-mailboxes-body"></tbody>
+            </table>
+          </div>
+          <details class="section">
+            <summary>Create a participant + mailbox</summary>
+            <div class="body">
+              <form id="provider-create-form">
+                <label for="provider-display-name">Participant's name</label>
+                <input id="provider-display-name" type="text" placeholder="Jane Doe" required>
+                <label for="provider-username">Mailbox username (local part only, e.g. "jane")</label>
+                <input id="provider-username" type="text" placeholder="jane" required>
+                <label for="provider-domain">Domain</label>
+                <input id="provider-domain" type="text" value="carepyre.org" required>
+                <p class="sub" style="margin:0 0 0.6rem;">A real, random login password and mailbox password are generated and shown once below -- CarePyre does not store them anywhere else.</p>
+                <button type="submit">Create participant + mailbox</button>
+              </form>
+              <div id="provider-created" class="hidden" style="margin-top:0.8rem;">
+                <div class="id-row"><span class="k">Email</span><span class="v" id="provider-created-email"></span></div>
+                <div class="id-row"><span class="k">Mailbox password</span><span class="v" id="provider-created-password"></span></div>
               </div>
             </div>
           </details>
@@ -675,13 +739,20 @@
 
     const isAdmin = perms.includes('users.admin');
     const isTwilioAdmin = perms.includes('twilio.admin');
+    // CP-HIPAA-1: mail-accounts.provision is a real, least-privilege role distinct from
+    // users.admin -- a provider gets their own "Participants" panel below, not the full
+    // Users/Mail-accounts admin panels (which expose every other participant, SIP assignment,
+    // and password reset -- all still users.admin-only server-side).
+    const isProvider = perms.includes('mail-accounts.provision') && !isAdmin;
     document.getElementById('admin-card').classList.toggle('hidden', !isAdmin);
     document.getElementById('twilio-card').classList.toggle('hidden', !isTwilioAdmin);
     document.getElementById('mail-accounts-card').classList.toggle('hidden', !isAdmin);
-    document.getElementById('nav-admin').classList.toggle('hidden', !(isAdmin || isTwilioAdmin));
+    document.getElementById('provider-card').classList.toggle('hidden', !isProvider);
+    document.getElementById('nav-admin').classList.toggle('hidden', !(isAdmin || isTwilioAdmin || isProvider));
     if (isAdmin) loadAdminUsers();
     if (isTwilioAdmin) loadTwilioStatus();
     if (isAdmin) loadMailAccounts();
+    if (isProvider) loadProviderMailboxes();
   }
 
   // ---- Your SIP account (CP-SIP-1244543543) ----
@@ -974,11 +1045,13 @@
   async function loadEncryptionStatus() {
     const statusEl = document.getElementById('enc-status');
     const addWrap = document.getElementById('enc-add-wrap');
+    const banner = document.getElementById('unencrypted-banner');
     try {
       const res = await fetch(API_BASE + '/mail/encryption', { headers: authHeaders() });
       if (res.status === 428) {
         statusEl.innerHTML = '<p class="sub" style="margin:0;">Connect your mailbox on the Mail tab first.</p>';
         addWrap.classList.add('hidden');
+        banner.classList.add('hidden');
         return;
       }
       const data = await res.json().catch(() => ({}));
@@ -989,14 +1062,28 @@
       if (data.enabled) {
         statusEl.innerHTML = '<div class="id-row"><span class="k">Status</span><span class="v" style="color:var(--success);">Encrypted (' + esc(CIPHER_LABEL[data.cipher] || data.cipher) + ')</span></div>';
         addWrap.classList.add('hidden');
+        banner.classList.add('hidden');
       } else {
         statusEl.innerHTML = '<div class="id-row"><span class="k">Status</span><span class="v" style="color:var(--error);">Not encrypted</span></div>';
         addWrap.classList.remove('hidden');
+        // CP-HIPAA-1: forceful encouragement -- shown every time this mailbox is unencrypted,
+        // not a one-time dismissible tip (there is deliberately no "don't show this again").
+        banner.classList.remove('hidden');
       }
     } catch (err) {
       statusEl.innerHTML = '<p class="error" style="margin:0;">Could not reach the console API: ' + esc(err.message) + '</p>';
     }
   }
+
+  document.getElementById('unencrypted-banner-btn').addEventListener('click', () => {
+    showPage('account');
+    const details = document.getElementById('enc-add-wrap').closest('details');
+    if (details) {
+      details.open = true;
+      details.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    document.getElementById('enc-key').focus();
+  });
 
   document.getElementById('enc-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1065,6 +1152,7 @@
           '<td>' + esc(u.local_uid) + '</td>' +
           '<td>' + esc(u.email) + '</td>' +
           '<td>' + esc(u.status) + '</td>' +
+          '<td><input type="checkbox" class="provider-checkbox" data-uid="' + esc(u.local_uid) + '"' + (u.is_provider ? ' checked' : '') + (u.is_admin ? ' disabled title="already a full admin"' : '') + '></td>' +
           '<td><input type="text" value="' + esc(existingSip ? existingSip.extension : '') + '" placeholder="e.g. 1000" data-uid="' + esc(u.local_uid) + '" class="ext-input"></td>' +
           '<td>' + mailCell + '</td>' +
           '<td class="row-actions">' +
@@ -1079,6 +1167,9 @@
       });
       tbody.querySelectorAll('.reset-pw-btn').forEach(btn => {
         btn.addEventListener('click', () => adminResetPassword(btn.dataset.uid));
+      });
+      tbody.querySelectorAll('.provider-checkbox').forEach(cb => {
+        cb.addEventListener('change', () => toggleProvider(cb.dataset.uid, cb.checked, cb));
       });
       tbody.querySelectorAll('.create-mail-btn').forEach(btn => {
         btn.addEventListener('click', () => createMailboxForUser(btn.dataset.uid));
@@ -1122,6 +1213,29 @@
       if (!res.ok) { adminMessage(false, body.error || ('Could not reveal password (HTTP ' + res.status + ').')); return; }
       window.prompt('Password for ' + body.email + ' (copy it now, this is shown only once per click):', body.password);
     } catch (err) {
+      adminMessage(false, 'Could not reach the console API: ' + err.message);
+    }
+  }
+
+  // CP-HIPAA-1: grant/revoke the least-privilege "provider" role (mail-accounts.provision only)
+  // -- distinct from the full users.admin checkbox this page doesn't even expose, since admin
+  // genesis has its own separate CLI path (idunapro admin-grant).
+  async function toggleProvider(uid, checked, checkbox) {
+    try {
+      const res = await fetch(API_BASE + '/users/' + encodeURIComponent(uid), {
+        method: 'PATCH',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+        body: JSON.stringify({ is_provider: checked }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        checkbox.checked = !checked; // revert the UI on failure
+        adminMessage(false, body.error || ('Could not update provider role (HTTP ' + res.status + ').'));
+        return;
+      }
+      adminMessage(true, 'User ' + uid + (checked ? ' is now a provider.' : ' is no longer a provider.'));
+    } catch (err) {
+      checkbox.checked = !checked;
       adminMessage(false, 'Could not reach the console API: ' + err.message);
     }
   }
@@ -1303,12 +1417,103 @@
     }
   });
 
+  // ---- CP-HIPAA-1: provider participant + mailbox creation ----
+  // Real, random login password for the participant's IDUNA_PRO identity -- distinct from the
+  // separately-generated mailbox password createMailboxForUser already returns. Neither is
+  // stored by this console beyond the one-time on-screen display.
+  function randomPassword(len) {
+    const bytes = new Uint8Array(len);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, b => b.toString(36).padStart(2, '0')).join('').slice(0, len);
+  }
+
+  function providerMessage(ok, text) {
+    const errEl = document.getElementById('provider-error');
+    const okEl = document.getElementById('provider-success');
+    errEl.classList.add('hidden');
+    okEl.classList.add('hidden');
+    (ok ? okEl : errEl).textContent = text;
+    (ok ? okEl : errEl).classList.remove('hidden');
+  }
+
+  async function loadProviderMailboxes() {
+    const body = document.getElementById('provider-mailboxes-body');
+    try {
+      const res = await fetch(API_BASE + '/mail-accounts', { headers: authHeaders() });
+      const data = await res.json().catch(() => ([]));
+      if (!res.ok) { providerMessage(false, (data && data.error) || ('HTTP ' + res.status)); return; }
+      body.innerHTML = '';
+      for (const a of (data || [])) {
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + esc(a.emailAddress) + '</td>' +
+          '<td>' + esc(a.createdAt || '') + '</td>' +
+          '<td>' + (a.local_uid !== undefined && a.local_uid !== null
+            ? '<button type="button" class="small secondary provider-reveal-btn" data-uid="' + esc(a.local_uid) + '">Reveal password</button>'
+            : '') + '</td>';
+        body.appendChild(tr);
+      }
+      if (!data || data.length === 0) {
+        body.innerHTML = '<tr><td colspan="3" class="sub">No participants yet -- create one below.</td></tr>';
+      }
+      body.querySelectorAll('.provider-reveal-btn').forEach(btn => {
+        btn.addEventListener('click', () => revealMailboxPassword(btn.dataset.uid));
+      });
+    } catch (err) {
+      providerMessage(false, 'Could not reach the console API: ' + err.message);
+    }
+  }
+
+  document.getElementById('provider-create-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const displayName = document.getElementById('provider-display-name').value.trim();
+    const username = document.getElementById('provider-username').value.trim();
+    const domain = document.getElementById('provider-domain').value.trim();
+    if (!displayName || !username) { providerMessage(false, 'Enter a participant name and mailbox username.'); return; }
+    try {
+      // Step 1: create the participant's own IDUNA_PRO identity (real, necessary --
+      // mail_account_credentials needs a local_uid to link to). A generated, unguessable email
+      // placeholder + password: the participant signs into webmail via the mailbox itself, not
+      // this login, so this identity's own credential never needs to be handed to anyone.
+      const loginEmail = username + '.' + Date.now() + '@participants.carepyre.org';
+      const userRes = await fetch(API_BASE + '/users', {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+        body: JSON.stringify({ email: loginEmail, password: randomPassword(24), display_name: displayName }),
+      });
+      const userBody = await userRes.json().catch(() => ({}));
+      if (!userRes.ok) { providerMessage(false, userBody.error || ('Could not create participant (HTTP ' + userRes.status + ').')); return; }
+
+      // Step 2: create + link the real mailbox to that new participant.
+      const mailRes = await fetch(API_BASE + '/mail-accounts', {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+        body: JSON.stringify({ username, domain, local_uid: userBody.local_uid }),
+      });
+      const mailBody = await mailRes.json().catch(() => ({}));
+      if (!mailRes.ok) {
+        providerMessage(false, mailBody.error || ('Participant created, but mailbox creation failed (HTTP ' + mailRes.status + ').'));
+        return;
+      }
+      providerMessage(true, 'Created ' + displayName + ' with mailbox ' + mailBody.email + '.');
+      document.getElementById('provider-created-email').textContent = mailBody.email;
+      document.getElementById('provider-created-password').textContent = mailBody.password;
+      document.getElementById('provider-created').classList.remove('hidden');
+      document.getElementById('provider-display-name').value = '';
+      document.getElementById('provider-username').value = '';
+      loadProviderMailboxes();
+    } catch (err) {
+      providerMessage(false, 'Could not reach the console API: ' + err.message);
+    }
+  });
+
   els.signoutBtn.addEventListener('click', () => {
     localStorage.removeItem(TOKEN_KEY);
     els.appShell.classList.add('hidden');
     document.getElementById('admin-card').classList.add('hidden');
     document.getElementById('twilio-card').classList.add('hidden');
     document.getElementById('mail-accounts-card').classList.add('hidden');
+    document.getElementById('provider-card').classList.add('hidden');
     document.getElementById('nav-admin').classList.add('hidden');
     showPage('mail');
     els.authMain.classList.remove('hidden');
