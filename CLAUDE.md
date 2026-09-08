@@ -17,7 +17,10 @@ not working infrastructure" — no longer true. Real, shipped, live infrastructu
 
 - `index.html`/`change.html` — the original static landing page + C.H.A.N.G.E. Initiative page,
   unchanged in spirit, still `STYLE_GUIDE.md`-governed with the "dawn-glow" Prompt-o-verse header
-  art direction. Contact form posts to IDUNA's `/api/v1/carepyre/contact`.
+  art direction. Contact form posts to IDUNA_PRO (via the existing `/console-api/` nginx proxy)
+  as of the 2026-09-08 PII audit — moved off plain IDUNA so submissions live in the same
+  service/DB as CarePyre's own tiered RBAC and retention policy; see
+  `docs/HIPAA_COMPLIANCE_NORTHSTAR.md`.
 - `console.html` — a real, full IDUNA_PRO-backed admin/provider console: email/password login,
   a 4-tier RBAC model (Top Admin/Operator Admin/Provider Admin/Provider Operator), mailbox and
   SIP-extension provisioning, PGP/S-MIME encryption-at-rest, white-label branding, compliance-
