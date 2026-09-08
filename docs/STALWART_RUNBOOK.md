@@ -224,6 +224,25 @@ Two real fixes applied the same day, via the Linode API (`EMILY/var/linode.env`)
 Linode unblocks the port, delivery to Gmail/Outlook should just start working with no further
 config changes needed on our end.
 
+**Resolved 2026-09-08.** Akamai/Linode support emailed confirming the restriction was lifted for
+`carepyre-email`. Re-verified live, not just taken on their word:
+
+```bash
+ssh deploy@45.79.143.216 "timeout 8 bash -c 'echo > /dev/tcp/gmail-smtp-in.l.google.com/25'"
+# -> connects (was a timeout before)
+dig -x 45.79.143.216 +short        # -> mail.carepyre.org. (unchanged, already correct)
+dig TXT carepyre.org +short        # -> "v=spf1 mx ~all" (unchanged, already correct)
+dig TXT _dmarc.carepyre.org +short # -> "v=DMARC1; p=quarantine; rua=mailto:postmaster@carepyre.org"
+```
+
+Port 25 outbound is genuinely open now; rDNS/SPF/DMARC were already correct from the original
+fix and needed no changes. Posted a confirmation reply on ticket #27380609 and closed it via the
+Linode API (`POST /v4/support/tickets/27380609/close`) — confirmed `status: closed` on re-fetch.
+No config or code changes were needed on our end; this was purely Linode's own restriction to
+lift. Outbound delivery to Gmail/Outlook should now work end to end — a real send-and-receive
+test (e.g. from `console.html`'s webmail) is the one thing this pass didn't itself exercise,
+since it would mean sending a real email from a real mailbox rather than a protocol-level check.
+
 ## Known, honest gaps not closed by this runbook
 
 - **No `postmaster@carepyre.org` mailbox** — the DMARC record's `rua=` address points there, but
