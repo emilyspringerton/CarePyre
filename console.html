@@ -590,6 +590,28 @@
           </div>
         </div>
 
+        <!-- Founder real-time, 2026-09-08 (PII audit -> "make the top admin have access to the
+             contact form"): carepyre.org's public Contact Us submissions, moved here from plain
+             IDUNA. Gated on contacts.manage (Top Admin only for now, see localUserPermissions in
+             IDUNA_PRO) -- a real, separately-named permission rather than folded into
+             users.admin, so it can extend to other tiers later without a rewrite. -->
+        <div class="card hidden" id="contacts-card" style="margin-top:1.5rem;">
+          <h2>Contact form</h2>
+          <p class="sub">Submissions from carepyre.org's public Contact Us form. Marking one
+            resolved starts a 90-day retention clock -- it's purged automatically after that.
+            Delete removes a submission immediately, for a deletion request that shouldn't have
+            to wait.</p>
+          <div id="contacts-error" class="error hidden"></div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead>
+                <tr><th>Name</th><th>Email</th><th>Message</th><th>Status</th><th>Received</th><th></th></tr>
+              </thead>
+              <tbody id="contacts-body"><tr><td colspan="6" class="sub">Loading&hellip;</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- CP-HIPAA-1 (founder real-time, 2026-09-07: "we can allow providers to create email
              accounts for participants"): a provider's own scoped panel -- gated on
              mail-accounts.provision, a real, least-privilege role distinct from users.admin.
@@ -795,6 +817,7 @@
     const isTwilioAdmin = perms.includes('twilio.admin');
     const isBrandingAdmin = perms.includes('branding.admin');
     const isComplianceAdmin = perms.includes('compliance.recording.manage');
+    const isContactsAdmin = perms.includes('contacts.manage');
     // CP-HIPAA-1: mail-accounts.provision is a real, least-privilege role distinct from
     // users.admin -- a provider gets their own "Participants" panel below, not the full
     // Users/Mail-accounts admin panels (which expose every other participant, SIP assignment,
@@ -805,13 +828,15 @@
     document.getElementById('mail-accounts-card').classList.toggle('hidden', !isAdmin);
     document.getElementById('branding-card').classList.toggle('hidden', !isBrandingAdmin);
     document.getElementById('compliance-card').classList.toggle('hidden', !isComplianceAdmin);
+    document.getElementById('contacts-card').classList.toggle('hidden', !isContactsAdmin);
     document.getElementById('provider-card').classList.toggle('hidden', !isProvider);
-    document.getElementById('nav-admin').classList.toggle('hidden', !(isAdmin || isTwilioAdmin || isBrandingAdmin || isComplianceAdmin || isProvider));
+    document.getElementById('nav-admin').classList.toggle('hidden', !(isAdmin || isTwilioAdmin || isBrandingAdmin || isComplianceAdmin || isContactsAdmin || isProvider));
     if (isAdmin) loadAdminUsers();
     if (isTwilioAdmin) loadTwilioStatus();
     if (isAdmin) loadMailAccounts();
     if (isBrandingAdmin) loadBrandingSettings();
     if (isComplianceAdmin) loadComplianceRecording();
+    if (isContactsAdmin) loadContacts();
     if (isProvider) loadProviderMailboxes();
   }
 
@@ -1545,6 +1570,80 @@
     }
   }
 
+  // ---- Contact form (contacts.manage) ----
+  async function loadContacts() {
+    const body = document.getElementById('contacts-body');
+    const errEl = document.getElementById('contacts-error');
+    errEl.classList.add('hidden');
+    try {
+      const res = await fetch(API_BASE + '/carepyre/contact-submissions', { headers: authHeaders() });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const rows = data.submissions || [];
+      if (rows.length === 0) {
+        body.innerHTML = '<tr><td colspan="6" class="sub">No submissions yet.</td></tr>';
+        return;
+      }
+      body.innerHTML = rows.map((s) => (
+        '<tr>' +
+          '<td>' + esc(s.name) + '</td>' +
+          '<td><a href="mailto:' + esc(s.email) + '">' + esc(s.email) + '</a></td>' +
+          '<td style="max-width:360px;white-space:pre-wrap">' + esc(s.message) + '</td>' +
+          '<td>' + esc(s.status) + '</td>' +
+          '<td class="sub">' + esc(s.created_at) + '</td>' +
+          '<td style="white-space:nowrap;">' +
+            (s.status === 'resolved'
+              ? '<button type="button" class="small secondary" data-contact-reopen="' + s.id + '" style="width:auto;">Reopen</button>'
+              : '<button type="button" class="small secondary" data-contact-resolve="' + s.id + '" style="width:auto;">Mark resolved</button>') +
+            ' <button type="button" class="small secondary" data-contact-delete="' + s.id + '" style="width:auto;">Delete</button>' +
+          '</td>' +
+        '</tr>'
+      )).join('');
+    } catch (err) {
+      errEl.textContent = 'Could not load contact submissions: ' + esc(err.message);
+      errEl.classList.remove('hidden');
+    }
+  }
+
+  async function setContactStatus(id, status) {
+    const res = await fetch(API_BASE + '/carepyre/contact-submissions/' + id, {
+      method: 'PATCH',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+      body: JSON.stringify({ status: status }),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+  }
+
+  async function deleteContact(id) {
+    const res = await fetch(API_BASE + '/carepyre/contact-submissions/' + id, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+  }
+
+  document.getElementById('contacts-body').addEventListener('click', async (e) => {
+    const target = e.target;
+    const errEl = document.getElementById('contacts-error');
+    errEl.classList.add('hidden');
+    try {
+      if (target.dataset.contactResolve) {
+        await setContactStatus(target.dataset.contactResolve, 'resolved');
+        await loadContacts();
+      } else if (target.dataset.contactReopen) {
+        await setContactStatus(target.dataset.contactReopen, 'new');
+        await loadContacts();
+      } else if (target.dataset.contactDelete) {
+        if (!confirm('Delete this submission permanently? This cannot be undone.')) return;
+        await deleteContact(target.dataset.contactDelete);
+        await loadContacts();
+      }
+    } catch (err) {
+      errEl.textContent = 'Action failed: ' + esc(err.message);
+      errEl.classList.remove('hidden');
+    }
+  });
+
   function complianceSetPreview(blob) {
     complianceBlob = blob;
     const preview = document.getElementById('compliance-preview');
@@ -1762,6 +1861,7 @@
     document.getElementById('mail-accounts-card').classList.add('hidden');
     document.getElementById('branding-card').classList.add('hidden');
     document.getElementById('compliance-card').classList.add('hidden');
+    document.getElementById('contacts-card').classList.add('hidden');
     document.getElementById('provider-card').classList.add('hidden');
     document.getElementById('nav-admin').classList.add('hidden');
     showPage('mail');
