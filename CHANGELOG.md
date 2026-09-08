@@ -1,3 +1,7 @@
+## 2026-09-08
+
+- Akamai/Linode confirmed outbound SMTP port 25 unblocked for carepyre-email; re-verified live, closed ticket #27380609. (sess-20260905-0720-ec33e7c5)
+
 ## 2026-09-07
 - Added one-tap same-device 'Open in app' link and localStorage-based auto-reregistration (provisioning URL only, never the password) so the CarePyre SIP Phone stays registered across app restarts. (sess-20260905-0720-ec33e7c5)
 - Fixed CAREPYRE-42143124: the provisioning URL (already password-inclusive) is now rendered as a scannable QR and recognized by the Android app's scan/camera-open paths, achieving true zero-manual-typing SIP registration. (sess-20260905-0720-ec33e7c5)
