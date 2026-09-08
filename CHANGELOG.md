@@ -1,4 +1,5 @@
 ## 2026-09-08
+- PII audit: contact form now posts to IDUNA_PRO via the existing /console-api/ nginx proxy (was IDUNA's own now-decommissioned /api/v1/carepyre/contact); console.html gets a real Contact form panel (list/resolve/delete) gated on contacts.manage; privacy.html's retention section now names the contact form specifically (90 days after resolved) and the rights section covers contact-form submitters, not just accounts (sess-20260905-0720-ec33e7c5)
 
 - Akamai/Linode confirmed outbound SMTP port 25 unblocked for carepyre-email; re-verified live, closed ticket #27380609. (sess-20260905-0720-ec33e7c5)
 
