@@ -203,6 +203,17 @@ see `IDUNA_PRO` commit `8bc4889` for the full backend writeup. `renderResumeTemp
 produce correctly-escaped, complete output for both templates and to not throw on an empty
 resume.
 
+**Real default-state fix, 2026-09-09 (same day, later)**: founder real-time "i removed all my
+bespoke resumes, created a new bespoke resume, and i am expecting it to default to the exact
+same as the master resume." "+ New bespoke resume" originally started every checkbox unchecked
+— technically consistent with `Resolve`'s own literal "nothing selected means nothing shown"
+contract, but the wrong default for the real, common tailoring workflow, which is subtractive
+(start from everything, hide what's not relevant to THIS opportunity) rather than additive.
+Fixed in console.html only (a new `allIDs()` helper) — a fresh target's checkboxes now start
+with every current master Work/Education/Skill/Award/Link entry selected. `Resolve`'s own
+backend contract is completely unchanged: an explicitly emptied selection still resolves to an
+empty resume.
+
 ## 4c. Real preview templates, shipped same day
 
 Founder real-time: "you should be able to change your resume from a classy looking output to a
