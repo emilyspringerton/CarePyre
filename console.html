@@ -629,7 +629,7 @@
           <div style="overflow-x:auto;">
             <table>
               <thead>
-                <tr><th>UID</th><th>Email</th><th>Status</th><th>Provider</th><th>SIP extension</th><th>Mailbox</th><th></th></tr>
+                <tr><th>UID</th><th>Email</th><th>Status</th><th>Provider</th><th>Community tools</th><th>SIP extension</th><th>Mailbox</th><th></th></tr>
               </thead>
               <tbody id="admin-users-body"></tbody>
             </table>
@@ -1430,6 +1430,7 @@
           '<td>' + esc(u.email) + '</td>' +
           '<td>' + esc(u.status) + '</td>' +
           '<td><input type="checkbox" class="provider-checkbox" data-uid="' + esc(u.local_uid) + '"' + (u.is_provider ? ' checked' : '') + (u.is_admin ? ' disabled title="already a full admin"' : '') + '></td>' +
+          '<td><input type="checkbox" class="community-tools-checkbox" data-uid="' + esc(u.local_uid) + '"' + (u.is_community_tools_enabled ? ' checked' : '') + '></td>' +
           '<td><input type="text" value="' + esc(existingSip ? existingSip.extension : '') + '" placeholder="e.g. 1000" data-uid="' + esc(u.local_uid) + '" class="ext-input"></td>' +
           '<td>' + mailCell + '</td>' +
           '<td class="row-actions">' +
@@ -1447,6 +1448,9 @@
       });
       tbody.querySelectorAll('.provider-checkbox').forEach(cb => {
         cb.addEventListener('change', () => toggleProvider(cb.dataset.uid, cb.checked, cb));
+      });
+      tbody.querySelectorAll('.community-tools-checkbox').forEach(cb => {
+        cb.addEventListener('change', () => toggleCommunityTools(cb.dataset.uid, cb.checked, cb));
       });
       tbody.querySelectorAll('.create-mail-btn').forEach(btn => {
         btn.addEventListener('click', () => createMailboxForUser(btn.dataset.uid));
@@ -1511,6 +1515,31 @@
         return;
       }
       adminMessage(true, 'User ' + uid + (checked ? ' is now a provider.' : ' is no longer a provider.'));
+    } catch (err) {
+      checkbox.checked = !checked;
+      adminMessage(false, 'Could not reach the console API: ' + err.message);
+    }
+  }
+
+  // Community Tools -- founder real-time, 2026-09-09: "i want to be able to check a box on that
+  // user to turn on the community tools." A real, plain per-account feature flag
+  // (is_community_tools_enabled), gated by users.admin server-side (same tier as the rest of
+  // this page) -- deliberately separate from is_provider/is_admin, since it grants no elevated
+  // RBAC tier, only access to one participant-facing feature area.
+  async function toggleCommunityTools(uid, checked, checkbox) {
+    try {
+      const res = await fetch(API_BASE + '/users/' + encodeURIComponent(uid), {
+        method: 'PATCH',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+        body: JSON.stringify({ is_community_tools_enabled: checked }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        checkbox.checked = !checked; // revert the UI on failure
+        adminMessage(false, body.error || ('Could not update community tools access (HTTP ' + res.status + ').'));
+        return;
+      }
+      adminMessage(true, 'User ' + uid + (checked ? ' now has community tools access.' : ' no longer has community tools access.'));
     } catch (err) {
       checkbox.checked = !checked;
       adminMessage(false, 'Could not reach the console API: ' + err.message);
