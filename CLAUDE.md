@@ -34,6 +34,12 @@ not working infrastructure" — no longer true. Real, shipped, live infrastructu
   `console.html` via iframe.
 - `ops/` — real nginx, Asterisk, and Stalwart mail-server configuration backing the above.
 - `terms.html`/`privacy.html` — draft ToS/Privacy Policy, explicitly marked pending legal review.
+- **Community Tools** (2026-09-09) — a new, gated feature area on the same IDUNA_PRO instance:
+  a real per-account feature flag (`is_community_tools_enabled`, the `community-tools.access`
+  permission), v0's own real first tool a resume/CV builder + verifier against the real JSON
+  Resume standard (`GET`/`PUT /api/v1/community-tools/resume`,
+  `POST /api/v1/community-tools/resume/verify`) — see `docs/COMMUNITY_TOOLS_RESUME_NORTHSTAR.md`
+  for the full design. Backend only so far; no `console.html` UI yet.
 
 `source/gemini-transcript-2026-08-09.md` is still the repo's real "skunkworks origin" artifact —
 an ingested Gemini conversation about ReLU activation function variants, unrelated to the
