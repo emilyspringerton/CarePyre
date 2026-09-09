@@ -1,6 +1,7 @@
 # NORTHSTAR — Community Tools: Resume/CV Builder + Verifier
 
-**Status:** Shipped, v0 backend + frontend (console.html). Layer 3 export rendering not built.
+**Status:** Shipped — master resume, real bespoke Target variants (show/hide + text overrides),
+and client-side preview templates. No real ATS-safe PDF/DOCX export path yet.
 **Date:** 2026-09-09
 
 Founder, real-time, verbatim across the ask: "we want to build a tool to maintain and verify
@@ -141,10 +142,95 @@ JS syntax verified directly (`node --check` against the extracted `<script>` blo
 for static HTML, so these are the real, honest limits of what got verified here; no live
 browser/click-through test was run.
 
+## 4b. Real Target resumes — bespoke, tailored variants per opportunity, shipped same day
+
+Founder real-time arc, followed in full: "like we have a base set of things that we tell the
+system in terms of history and skills etc we need some way to start building more bespoke
+resumes for specific opportunities" → "the pattern probably applies to education awards
+experience skills even different little summary texts" → "this is probably most useful in the
+skills section" → "we are going to want to keep all of the exported tweaked versions so we can
+clone from them for new opportunities."
+
+Real, deliberate design: the master resume (§2-§4) stays the single, full source of truth. A
+Target never duplicates or edits that data — it real, named SELECTS a subset of it (by stable
+ID) to show for one specific opportunity, plus a small, named set of text overrides for the
+professional summary/headline (the two blurbs that actually get rewritten per application in
+practice — "even different little summary texts"), not a general per-entry text-override
+mechanism, named honestly as out of scope.
+
+New `Work.ID`/`Education.ID`/`Skill.ID`/`Award.ID` — a real, deliberate CarePyre extension
+beyond strict JSON Resume (which has no `id` field), server-assigned (`assignResumeIDs`)
+whenever a saved entry arrives with none, so a Target's own selection lists reference a
+specific entry stably, surviving reorders/edits to other entries.
+
+New `internal/resume/target.go`: `Target{IncludedWorkIDs, IncludedEducationIDs,
+IncludedSkillIDs, IncludedAwardIDs, SummaryOverride, LabelOverride}` + `Resolve(master, target)
+*Resume`, a real generic `filterByID[T]` shared across all four sections. A nil/empty
+selection resolves to EMPTY, not a fallback to "show everything" — honest, literal show/hide.
+
+New `CommunityToolsTargetsHandler`: `GET`/`PUT /api/v1/community-tools/resume/targets`
+(whole-list replace, matching the master resume's own established `PUT` convention — an entry
+with no `id` is a new target, one missing from the new list is a real delete, satisfying "clone
+from them" with zero new API surface: a clone is just a new, unsaved target row pre-filled from
+an existing one's current values), plus `GET .../targets/{id}/resolved` and
+`POST .../targets/{id}/verify` — verification runs against the real RESOLVED view, not the
+master, catching e.g. "this target hides every work entry, it now fails
+has-work-or-education" even though the master itself passes.
+
+New migration `202609090002_resume_targets.sql`: a sibling `targets` JSON column on the same
+`resumes` row (targets are views over one user's one master resume, not independent documents).
+
+New "Bespoke resumes" card in `console.html`: a real checkbox per master Work/Education/Skill/
+Award entry (human-labeled, e.g. "Line Cook — Acme Corp"), real optional summary/headline
+override fields (a real checkbox gates whether an override is sent at all — `null` vs. an
+empty string are genuinely different on the wire, matching `SummaryOverride`'s own
+`*string`-pointer contract), and real Clone/Verify/Preview/Remove actions per bespoke resume.
+
+**Real, live-found bug fixed before shipping, not caught by syntax checking alone**: the
+"Remove" button on a bespoke-resume card originally removed only the DOM element, never the
+matching entry in `currentTargets` (the real, separate source-of-truth array "New"/"Clone"
+re-render FROM) — clicking either of those after a Remove would silently resurrect the
+"removed" target. Fixed by splicing the array too, then re-rendering, the same DOM/array-sync
+discipline every other mutation already follows. Found by re-reading the actual control flow,
+not by any automated check.
+
+17 new Go tests (`internal/resume/target_test.go` + `community_tools_test.go`), all passing —
+see `IDUNA_PRO` commit `8bc4889` for the full backend writeup. `renderResumeTemplate`
+(§4c below) was also run for real against sample data (not just `node --check`), confirmed to
+produce correctly-escaped, complete output for both templates and to not throw on an empty
+resume.
+
+## 4c. Real preview templates, shipped same day
+
+Founder real-time: "you should be able to change your resume from a classy looking output to a
+more tech clean tech looking with a click" — followed directly. One real, semantic render
+(`renderResumeTemplate`) of whichever source is selected (the master resume, cached already
+from the page's own load — no extra fetch — or a saved Target's own real, resolved view via
+`GET .../targets/{id}/resolved`), wrapped in one of two real, distinct CSS classes
+(`.resume-tpl-classic` — serif, centered, traditional; `.resume-tpl-tech` — sans-serif,
+left-aligned, a colored accent) switchable instantly by clicking either template button, no new
+request needed to switch since the underlying data is already cached client-side.
+
+Every real, user-controlled piece of text goes through `esc()` into a plain text-content
+position — verified for real, not just asserted: `renderResumeTemplate` was extracted and run
+directly against sample data containing real HTML-special characters (`<`, `>`, `&`, `"`) in
+the name/label/summary fields, confirming the raw characters never appear unescaped in the
+output.
+
+Real, honest, not done: no PDF/print-specific stylesheet tuning beyond the two screen templates
+themselves (a browser's own "Print" / "Save as PDF" works today, untested for real layout
+quality); no way to save a chosen template preference per Target yet (the template choice is
+session-only, reset on reload).
+
 ## 5. Real, honest, not done
 
-- **Layer 3 (export-format safety) is not built.** No ATS-safe PDF/DOCX render path exists yet.
-- **No multiple resume variants per user** — v0 is deliberately one resume per account.
+- **Layer 3 (real, exported ATS-safe PDF/DOCX file generation) is not built** — the preview
+  templates (§4c) are real, styled, on-screen/printable HTML, not a downloadable file the
+  founder's own original "verify → export" loop (§3) described; a browser's own Print-to-PDF is
+  the real, current, untested stand-in.
+- Per-entry (not just per-target) text overrides — "even different little summary texts" is
+  satisfied at the Basics (summary/headline) level only, not per-work-entry, named honestly as
+  a real, separate, smaller possible extension if ever needed.
 - Section-label vocabulary advisory checks (real ATS advice about non-standard headers) named in
   the original scoping pass but not implemented — a real, separate, smaller follow-up to Layer 2.
 - No live browser verification of the new console.html UI (see §4a) — syntax/structure checked
