@@ -251,6 +251,29 @@
   .resume-tpl-tech .rt-entry-dates { float: right; color: #888; font-size: 0.8rem; font-family: 'Courier New', monospace; }
   .resume-tpl-tech .rt-skill-pill { display: inline-block; background: #eaf6fc; color: var(--blue-dark, #1c6f96); border-radius: 999px; padding: 0.15rem 0.65rem; margin: 0.15rem 0.25rem 0.15rem 0; font-size: 0.82rem; font-weight: 600; }
 
+  /* Compact -- founder real-time, 2026-09-09: "add a new output template compact that manages
+     to get the experience and education like into 2 columns or something so we can get more
+     skills on the page and keep it 1 page." A real, denser screen approximation of the PDF's
+     own two-column layout (rt-columns: Experience wider, Education narrower) -- not pixel-
+     matched, matching this feature's own already-documented "no visual parity between the PDF
+     and the web preview templates" precedent. */
+  .resume-tpl-compact { font-family: 'Segoe UI', system-ui, sans-serif; color: #1c1c22; background: #fff; padding: 1.5rem; border-radius: 8px; max-width: 680px; margin: 0 auto; font-size: 0.88rem; }
+  .resume-tpl-compact .rt-name { font-size: 1.5rem; font-weight: 700; text-align: center; }
+  .resume-tpl-compact .rt-label { text-align: center; color: #5a5a5a; font-style: italic; margin-top: 0.1rem; }
+  .resume-tpl-compact .rt-contact { text-align: center; color: #5a5a5a; font-size: 0.78rem; margin-top: 0.3rem; }
+  .resume-tpl-compact .rt-summary { font-size: 0.85rem; margin: 0.6rem 0; }
+  .resume-tpl-compact .rt-section-title { font-weight: 700; text-transform: uppercase; font-size: 0.76rem; letter-spacing: 0.06em; border-bottom: 1px solid #ccc; margin: 0 0 0.4rem; padding-bottom: 0.15rem; }
+  .resume-tpl-compact .rt-entry { margin-bottom: 0.55rem; }
+  .resume-tpl-compact .rt-entry-title { font-weight: 700; font-size: 0.85rem; }
+  .resume-tpl-compact .rt-entry-sub { font-style: italic; color: #444; font-size: 0.78rem; }
+  .resume-tpl-compact .rt-entry-dates { display: block; color: #666; font-size: 0.75rem; float: none; }
+  .resume-tpl-compact .rt-skill-pill { display: inline-block; border: 1px solid #ccc; border-radius: 3px; padding: 0.08rem 0.4rem; margin: 0.1rem 0.2rem 0.1rem 0; font-size: 0.78rem; }
+  .resume-tpl-compact .rt-columns { display: grid; grid-template-columns: 1.6fr 1fr; gap: 0 1.2rem; margin-top: 0.6rem; }
+  .resume-tpl-compact .rt-columns .rt-section-title { margin-top: 0; }
+  @media (max-width: 480px) {
+    .resume-tpl-compact .rt-columns { grid-template-columns: 1fr; }
+  }
+
   .rt-entry { margin-bottom: 0.7rem; }
   .rt-entry:after { content: ''; display: block; clear: both; }
   .rt-summary { margin-top: 0.7rem; line-height: 1.5; }
@@ -631,6 +654,10 @@
           <div style="display:flex; gap:0.6rem; margin:0.6rem 0 1rem; flex-wrap:wrap;">
             <button type="button" class="small secondary" id="preview-template-classic" data-template="classic">Classic</button>
             <button type="button" class="small secondary" id="preview-template-tech" data-template="tech">Clean Tech</button>
+            <!-- Compact -- founder real-time, 2026-09-09: "add a new output template compact
+                 that manages to get the experience and education like into 2 columns or
+                 something so we can get more skills on the page and keep it 1 page." -->
+            <button type="button" class="small secondary" id="preview-template-compact" data-template="compact">Compact</button>
             <button type="button" class="small" id="preview-download-pdf-btn" style="margin-left:auto;">Download PDF</button>
           </div>
           <div id="preview-download-error" class="error hidden"></div>
@@ -2332,7 +2359,7 @@
         targetsMessage(false, 'Save this bespoke resume first, then Export it.');
         return;
       }
-      downloadResumePDF(target.id, exportBtn, null);
+      downloadResumePDF(target.id, exportBtn, null, pdfTemplateParam(currentPreviewTemplate));
     });
     actions.appendChild(cloneBtn);
     actions.appendChild(previewBtn);
@@ -2458,6 +2485,17 @@
   document.getElementById('preview-source-select').addEventListener('change', (e) => loadPreviewSource(e.target.value));
   document.getElementById('preview-template-classic').addEventListener('click', () => { currentPreviewTemplate = 'classic'; renderPreview(); });
   document.getElementById('preview-template-tech').addEventListener('click', () => { currentPreviewTemplate = 'tech'; renderPreview(); });
+  document.getElementById('preview-template-compact').addEventListener('click', () => { currentPreviewTemplate = 'compact'; renderPreview(); });
+
+  // pdfTemplateParam -- the PDF exporter only knows two real layouts ("classic"/"compact" --
+  // see IDUNA_PRO's resume.RenderPDF), unlike the three screen-preview styles (Classic/Clean
+  // Tech/Compact) -- "Clean Tech" has always been screen-only, the same real, already-documented
+  // "no visual parity between the PDF and the web preview templates" boundary this feature
+  // shipped with from its first PDF export pass. Anything other than "compact" maps to the real,
+  // ATS-safe "classic" PDF layout.
+  function pdfTemplateParam(screenTemplate) {
+    return screenTemplate === 'compact' ? 'compact' : 'classic';
+  }
 
   // downloadResumePDF -- the real "Layer 3" gap named honestly since this feature first shipped
   // its screen-only preview templates above: a real, downloadable, ATS-safe PDF FILE. Fetched as
@@ -2466,10 +2504,11 @@
   // authenticated file download. The filename comes from the server's own real Content-
   // Disposition header (IDUNA_PRO's pdfFilename sanitizer), not reconstructed client-side, so
   // what lands on disk always matches what the server actually decided to call it.
-  async function downloadResumePDF(targetId, btn, errEl) {
-    const url = targetId
+  async function downloadResumePDF(targetId, btn, errEl, template) {
+    const query = '?template=' + encodeURIComponent(template || 'classic');
+    const url = (targetId
       ? API_BASE + '/community-tools/resume/targets/' + encodeURIComponent(targetId) + '/export.pdf'
-      : API_BASE + '/community-tools/resume/export.pdf';
+      : API_BASE + '/community-tools/resume/export.pdf') + query;
     const origText = btn ? btn.textContent : null;
     if (errEl) errEl.classList.add('hidden');
     if (btn) { btn.disabled = true; btn.textContent = 'Downloading…'; }
@@ -2498,7 +2537,7 @@
 
   document.getElementById('preview-download-pdf-btn').addEventListener('click', (e) => {
     const sourceId = document.getElementById('preview-source-select').value;
-    downloadResumePDF(sourceId || null, e.currentTarget, document.getElementById('preview-download-error'));
+    downloadResumePDF(sourceId || null, e.currentTarget, document.getElementById('preview-download-error'), pdfTemplateParam(currentPreviewTemplate));
   });
 
   function renderPreview() {
@@ -2510,9 +2549,40 @@
   // a plain TEXT CONTENT position (never an attribute value) -- the same real, safe pattern
   // renderResumeVerify's own header comment already establishes, not the attribute-injection
   // risk makeResumeEntryRow's own header comment documents fixing elsewhere in this file.
+  function renderResumeTemplateWork(work) {
+    if (!(work || []).length) return '';
+    let html = '<div class="rt-section-title">Experience</div>';
+    work.forEach((w) => {
+      html += '<div class="rt-entry"><span class="rt-entry-dates">' + esc([w.startDate, w.endDate || 'Present'].filter(Boolean).join(' – ')) + '</span>' +
+        '<div class="rt-entry-title">' + esc(w.position || '') + '</div>' +
+        '<div class="rt-entry-sub">' + esc(w.name || '') + '</div>' +
+        (w.summary ? '<div>' + esc(w.summary) + '</div>' : '') + '</div>';
+    });
+    return html;
+  }
+
+  function renderResumeTemplateEducation(education) {
+    if (!(education || []).length) return '';
+    let html = '<div class="rt-section-title">Education</div>';
+    education.forEach((e) => {
+      html += '<div class="rt-entry"><span class="rt-entry-dates">' + esc([e.startDate, e.endDate || 'Present'].filter(Boolean).join(' – ')) + '</span>' +
+        '<div class="rt-entry-title">' + esc(e.institution || '') + '</div>' +
+        '<div class="rt-entry-sub">' + esc([e.studyType, e.area].filter(Boolean).join(', ')) + '</div></div>';
+    });
+    return html;
+  }
+
+  // renderResumeTemplate -- three real screen styles: Classic (serif, traditional), Clean Tech
+  // (sans, blue accent), and Compact (founder real-time, 2026-09-09: "add a new output template
+  // compact that manages to get the experience and education like into 2 columns or something
+  // so we can get more skills on the page and keep it 1 page") -- the only one of the three that
+  // renders Experience and Education side by side (.rt-columns, a real CSS grid) rather than
+  // sequentially, a screen approximation of the PDF's own real two-column compact layout (not
+  // pixel-matched, matching this feature's own "no visual parity between the PDF and the web
+  // preview" precedent already established for Classic/Clean Tech).
   function renderResumeTemplate(r, templateName) {
     const b = r.basics || {};
-    const cls = templateName === 'tech' ? 'resume-tpl-tech' : 'resume-tpl-classic';
+    const cls = templateName === 'tech' ? 'resume-tpl-tech' : templateName === 'compact' ? 'resume-tpl-compact' : 'resume-tpl-classic';
     let html = '<div class="' + cls + '">';
     html += '<div class="rt-name">' + esc(b.name || 'Your name') + '</div>';
     if (b.label) html += '<div class="rt-label">' + esc(b.label) + '</div>';
@@ -2530,23 +2600,12 @@
     if (links) html += '<div class="rt-contact">' + links + '</div>';
     if (b.summary) html += '<p class="rt-summary">' + esc(b.summary) + '</p>';
 
-    if ((r.work || []).length) {
-      html += '<div class="rt-section-title">Experience</div>';
-      r.work.forEach((w) => {
-        html += '<div class="rt-entry"><span class="rt-entry-dates">' + esc([w.startDate, w.endDate || 'Present'].filter(Boolean).join(' – ')) + '</span>' +
-          '<div class="rt-entry-title">' + esc(w.position || '') + '</div>' +
-          '<div class="rt-entry-sub">' + esc(w.name || '') + '</div>' +
-          (w.summary ? '<div>' + esc(w.summary) + '</div>' : '') + '</div>';
-      });
+    if (templateName === 'compact') {
+      html += '<div class="rt-columns"><div>' + renderResumeTemplateWork(r.work) + '</div><div>' + renderResumeTemplateEducation(r.education) + '</div></div>';
+    } else {
+      html += renderResumeTemplateWork(r.work) + renderResumeTemplateEducation(r.education);
     }
-    if ((r.education || []).length) {
-      html += '<div class="rt-section-title">Education</div>';
-      r.education.forEach((e) => {
-        html += '<div class="rt-entry"><span class="rt-entry-dates">' + esc([e.startDate, e.endDate || 'Present'].filter(Boolean).join(' – ')) + '</span>' +
-          '<div class="rt-entry-title">' + esc(e.institution || '') + '</div>' +
-          '<div class="rt-entry-sub">' + esc([e.studyType, e.area].filter(Boolean).join(', ')) + '</div></div>';
-      });
-    }
+
     if ((r.skills || []).length) {
       html += '<div class="rt-section-title">Skills</div><div>';
       r.skills.forEach((s) => { html += '<span class="rt-skill-pill">' + esc(s.name || '') + '</span>'; });
