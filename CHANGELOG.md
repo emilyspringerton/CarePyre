@@ -1,4 +1,5 @@
 ## 2026-09-09
+- Bespoke resumes: saved Target cards now collapse into a summary with a real Edit button (load a saved target for editing) instead of always rendering fully open. Deployed live. Apple #18747. (sess-20260905-0720-ec33e7c5)
 - Community Tools: 'Community tools' checkbox column added to the admin Users table (console.html), wired to the existing PATCH .../users/{uid} route. Deployed live. Apple #18742. (sess-20260905-0720-ec33e7c5)
 - Community Tools: real 'Download PDF'/'Export PDF' buttons in console.html for the master resume and each saved Target, backed by IDUNA_PRO's new PDF export routes. Apple #18738. (sess-20260905-0720-ec33e7c5)
 - feat(community-tools): bespoke Target resume UI + preview templates in console.html -- checkbox selection per master entry, summary/headline overrides, Clone/Verify/Preview/Remove, two switchable CSS templates. Real bug found+fixed (Remove/re-render array desync). Apple #18733. (sess-20260905-0720-ec33e7c5)
