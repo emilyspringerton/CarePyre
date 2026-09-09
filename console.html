@@ -555,6 +555,21 @@
               </div>
             </details>
 
+            <!-- Links -- founder real-time, 2026-09-09: "we need to be able to add and
+                 configure the output of multiple github links." Several entries can share the
+                 same network label (e.g. multiple distinct GitHub repo links) -- each one is
+                 its own real, independently removable/tailorable entry, not a single field. -->
+            <details class="section" open>
+              <summary>Links</summary>
+              <div class="body">
+                <p class="sub" style="margin-top:0;">GitHub, portfolio, LinkedIn -- add as many as
+                  you want. Each is its own real entry, so a bespoke resume below can show a
+                  different subset per opportunity.</p>
+                <div id="resume-profiles-list"></div>
+                <button type="button" class="small secondary" id="resume-profiles-add" style="margin-top:0.6rem;">+ Add link</button>
+              </div>
+            </details>
+
             <div style="display:flex; gap:0.7rem; margin-top:1rem;">
               <button type="submit" style="width:auto;">Save resume</button>
               <button type="button" id="resume-verify-btn" class="secondary" style="width:auto; margin-top:0;">Verify</button>
@@ -1779,6 +1794,14 @@
     { key: 'level', label: 'Level (e.g. Beginner, Intermediate, Expert)', type: 'text' },
     { key: 'keywords', label: 'Related keywords (comma-separated)', type: 'text' },
   ];
+  // Links (JSON Resume's own "profiles" field) -- founder real-time, 2026-09-09: "we need to be
+  // able to add and configure the output of multiple github links." `network` is a free-text
+  // label ("GitHub", "LinkedIn", "Portfolio") -- multiple entries with the SAME network value
+  // (e.g. one link per repo) is real and expected, not a duplicate to be merged.
+  const RESUME_PROFILE_FIELDS = [
+    { key: 'network', label: 'Label (e.g. GitHub, LinkedIn, Portfolio)', type: 'text' },
+    { key: 'url', label: 'URL', type: 'text', placeholder: 'https://github.com/you/project' },
+  ];
 
   // makeResumeEntryRow -- real, deliberate ID tracking (row.dataset.entryId, 2026-09-09): a
   // saved entry's own real, server-assigned id (Work.ID/Education.ID/Skill.ID -- see
@@ -1827,9 +1850,13 @@
     const flat = existing ? Object.assign({}, existing, { keywords: (existing.keywords || []).join(', ') }) : existing;
     return makeResumeEntryRow(document.getElementById('resume-skills-list'), RESUME_SKILL_FIELDS, flat);
   }
+  function addResumeProfileRow(existing) {
+    return makeResumeEntryRow(document.getElementById('resume-profiles-list'), RESUME_PROFILE_FIELDS, existing);
+  }
   document.getElementById('resume-work-add').addEventListener('click', () => addResumeWorkRow());
   document.getElementById('resume-education-add').addEventListener('click', () => addResumeEducationRow());
   document.getElementById('resume-skills-add').addEventListener('click', () => addResumeSkillRow());
+  document.getElementById('resume-profiles-add').addEventListener('click', () => addResumeProfileRow());
 
   function collectResumeEntries(container, fields) {
     const out = [];
@@ -1857,6 +1884,10 @@
     });
   }
 
+  function collectResumeProfiles() {
+    return collectResumeEntries(document.getElementById('resume-profiles-list'), RESUME_PROFILE_FIELDS);
+  }
+
   // currentMasterResume -- a real, in-memory cache of the last-loaded/saved master resume,
   // used by the Bespoke Resumes (Targets) section below to build its own real checkbox lists
   // (which master entries exist to select from) without a second real fetch, and by the
@@ -1878,9 +1909,11 @@
       document.getElementById('resume-work-list').innerHTML = '';
       document.getElementById('resume-education-list').innerHTML = '';
       document.getElementById('resume-skills-list').innerHTML = '';
+      document.getElementById('resume-profiles-list').innerHTML = '';
       (r.work || []).forEach((w) => addResumeWorkRow(w));
       (r.education || []).forEach((e) => addResumeEducationRow(e));
       (r.skills || []).forEach((s) => addResumeSkillRow(s));
+      (basics.profiles || []).forEach((p) => addResumeProfileRow(p));
       await loadTargetsUI();
     } catch (err) {
       resumeMessage(false, 'Could not load your resume: ' + err.message);
@@ -1896,6 +1929,7 @@
         email: document.getElementById('resume-email').value.trim(),
         phone: document.getElementById('resume-phone').value.trim(),
         summary: document.getElementById('resume-summary').value.trim(),
+        profiles: collectResumeProfiles(),
       },
       work: collectResumeEntries(document.getElementById('resume-work-list'), RESUME_WORK_FIELDS),
       education: collectResumeEntries(document.getElementById('resume-education-list'), RESUME_EDUCATION_FIELDS),
@@ -1921,9 +1955,11 @@
       document.getElementById('resume-work-list').innerHTML = '';
       document.getElementById('resume-education-list').innerHTML = '';
       document.getElementById('resume-skills-list').innerHTML = '';
+      document.getElementById('resume-profiles-list').innerHTML = '';
       (body.work || []).forEach((w) => addResumeWorkRow(w));
       (body.education || []).forEach((e) => addResumeEducationRow(e));
       (body.skills || []).forEach((s) => addResumeSkillRow(s));
+      ((body.basics || {}).profiles || []).forEach((p) => addResumeProfileRow(p));
       renderTargetsUI();
     } catch (err) {
       resumeMessage(false, 'Could not reach the console API: ' + err.message);
@@ -2061,6 +2097,7 @@
       [(target.included_education_ids || []).length, 'education'],
       [(target.included_skill_ids || []).length, 'skill'],
       [(target.included_award_ids || []).length, 'award'],
+      [(target.included_profile_ids || []).length, 'link'],
     ].filter(([n]) => n > 0).map(([n, label]) => n + ' ' + label + (n === 1 ? '' : 's'));
     return parts.length ? parts.join(', ') + ' shown' : 'nothing shown yet';
   }
@@ -2131,6 +2168,7 @@
       ['education', master.education, target.included_education_ids, (e) => e.institution || 'Untitled entry'],
       ['skills', master.skills, target.included_skill_ids, (s) => s.name || 'Untitled skill'],
       ['awards', master.awards, target.included_award_ids, (a) => a.title || 'Untitled award'],
+      ['links', (master.basics || {}).profiles, target.included_profile_ids, (p) => (p.network || 'Link') + (p.url ? ' — ' + p.url : '')],
     ];
     for (const [section, entries, includedIDs, labelOf] of sections) {
       const heading = document.createElement('div');
@@ -2276,7 +2314,7 @@
       const section = list.dataset.section;
       const ids = [];
       list.querySelectorAll('input[type="checkbox"]').forEach((cb) => { if (cb.checked && cb.dataset.id) ids.push(cb.dataset.id); });
-      const key = { work: 'included_work_ids', education: 'included_education_ids', skills: 'included_skill_ids', awards: 'included_award_ids' }[section];
+      const key = { work: 'included_work_ids', education: 'included_education_ids', skills: 'included_skill_ids', awards: 'included_award_ids', links: 'included_profile_ids' }[section];
       out[key] = ids;
     });
     ['summary', 'label'].forEach((key) => {
@@ -2288,7 +2326,7 @@
   }
 
   document.getElementById('targets-add-btn').addEventListener('click', () => {
-    const fresh = { name: '', included_work_ids: [], included_education_ids: [], included_skill_ids: [], included_award_ids: [] };
+    const fresh = { name: '', included_work_ids: [], included_education_ids: [], included_skill_ids: [], included_award_ids: [], included_profile_ids: [] };
     currentTargets.push(fresh);
     expandedTargets.add(fresh); // opens straight into the editable form, not a collapsed summary
     renderTargetsUI();
@@ -2416,6 +2454,16 @@
     if (b.label) html += '<div class="rt-label">' + esc(b.label) + '</div>';
     const contact = [b.email, b.phone].filter(Boolean).map(esc).join(' &middot; ');
     if (contact) html += '<div class="rt-contact">' + contact + '</div>';
+    // Links (basics.profiles) -- founder real-time, 2026-09-09: "we need to be able to add and
+    // configure the output of multiple github links." Rendered as plain escaped TEXT, same as
+    // the contact line above -- never spliced into an href="..." attribute, the same real
+    // attribute-injection risk this file's own header comment already warns about (esc() is
+    // only safe for a text-content position, not an attribute value).
+    const links = (b.profiles || [])
+      .filter((p) => p.url || p.username)
+      .map((p) => esc((p.network || 'Link') + ': ' + (p.url || p.username)))
+      .join(' &middot; ');
+    if (links) html += '<div class="rt-contact">' + links + '</div>';
     if (b.summary) html += '<p class="rt-summary">' + esc(b.summary) + '</p>';
 
     if ((r.work || []).length) {

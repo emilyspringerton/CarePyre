@@ -1,8 +1,10 @@
 # NORTHSTAR — Community Tools: Resume/CV Builder + Verifier
 
-**Status:** Shipped — master resume, real bespoke Target variants (show/hide + text overrides),
-client-side preview templates, and a real, downloadable, ATS-safe PDF export file (Layer 3).
-No DOCX export path yet.
+**Status:** Shipped — master resume (now including a "Links" section for multiple GitHub/
+LinkedIn/portfolio links), real bespoke Target variants (show/hide + text overrides) covering
+all five entry types (Work/Education/Skill/Award/Profile), client-side preview templates, a
+real, downloadable, ATS-safe PDF export file (Layer 3), and a real agent-ergonomic API surface
+(PATCH/POST/DELETE primitives + a published OpenAPI spec). No DOCX export path yet.
 **Date:** 2026-09-09
 
 Founder, real-time, verbatim across the ask: "we want to build a tool to maintain and verify
@@ -262,6 +264,71 @@ OS-recognized (`file(1)`-confirmed) single-page PDF with the correct `Content-Ty
 `Content-Disposition` headers; the quoted-target-name case above confirmed live too, not just in
 the unit test suite.
 
+## 4e. Real agent-ergonomic API primitives + OpenAPI spec, shipped 2026-09-09
+
+Founder real-time: "ensure that all of the features we have have good api because i am going to
+ask agents to work with those primitives to start intelligently managing the resume using
+agentic ai." Every route from §4-4d used whole-document PUT/whole-list PUT only -- an agent
+making one small edit had to fetch, mutate, and resend everything.
+
+Real, new, additive primitives (the original whole-document routes are unchanged, still there):
+`PATCH /resume/basics` (partial Basics merge); `POST /resume/{work,education,skills,awards}`
+(create one entry); `PATCH`/`DELETE /resume/{section}/{id}` (update/remove one entry); the
+identical shape for Targets (`POST /resume/targets`, `PATCH`/`DELETE /resume/targets/{id}`).
+One real, shared generic implementation (`CommunityToolsEntryHandler[T]` + `entryOps[T]`) serves
+Work/Education/Skill/Award/Profile instead of five hand-duplicated handlers.
+
+PATCH relies on `encoding/json`'s own real "unmarshal onto an already-populated value" merge
+semantics: a JSON key absent from the request body leaves that field untouched; a key present
+(including an explicit `""` or `null`) overwrites it. For Target's `summary_override`/
+`label_override` specifically this gives a genuine three-way distinction -- absent (unchanged),
+`null` (explicitly cleared), or a real value (set) -- verified directly in tests, not just
+asserted.
+
+Real, found-and-fixed-before-shipping bug: the first draft of `main.go`'s wiring built the four
+entry handlers with only `DB`/`Prefix` set, leaving `Ops` a zero-value struct of nil functions --
+compiles fine, panics the moment any entry is actually touched. Fixed with real, exported
+per-type constructors (`NewCommunityToolsWorkHandler` etc.) that fully wire everything together,
+so main.go can never again construct one of these half-built.
+
+New `GET /api/v1/community-tools/openapi.json` -- a real, complete OpenAPI 3.0 document (`go:embed`,
+genuine JSON, not YAML served under a misleading `.json` URL) describing every route, so an
+agent can bootstrap against this API without reading Go source. Deliberately public (no auth) --
+it describes the shape of the API, not any caller's own data, the same reasoning `JWKSHandler`
+already applies to its own public key set.
+
+## 4f. Real multi-GitHub-links support ("Links" section), shipped 2026-09-09
+
+Founder real-time: "we need to be able to add and configure the output of multiple github
+links." Real, checked-first finding: `basics.profiles` existed in the JSON Resume data model
+since this feature's very first pass, but had zero UI, zero PDF rendering, and zero screen-
+preview rendering -- and no stable per-entry `id`, so it couldn't be selected into a bespoke
+Target either. A real, silent, three-way gap, closed the same way Skills' own gap was closed
+earlier the same day.
+
+- `Profile.ID` (new, mirrors `Work.ID`/etc.) -- multiple entries sharing the identical
+  `network` value (e.g. several distinct GitHub repo links) is real and expected; the id, not
+  the network label, is what makes them independently addressable.
+- `Target.IncludedProfileIDs` + `Resolve` now filters Profiles the same way it filters
+  Work/Education/Skill/Award.
+- `RenderPDF` and console.html's `renderResumeTemplate` both now render a real "Links" line
+  under the contact info (`Network: address`, address-less entries skipped) -- previously
+  rendered nowhere in either output.
+- A new "Links" section in console.html's Resume editor (network label + URL, add/remove rows,
+  matching the existing Work/Education/Skills row-editor convention exactly) and a "Show links"
+  checklist in the Bespoke Resumes card, so a Target can show a different subset of links per
+  opportunity.
+- `NewCommunityToolsProfilesHandler` reuses the exact same generic `CommunityToolsEntryHandler[T]`
+  machinery from §4e -- `POST`/`PATCH`/`DELETE /resume/profiles[/{id}]` -- and is documented in
+  the OpenAPI spec alongside the other four entry types.
+
+Real, honest verification beyond `go test`: `renderResumeTemplate`'s new links line was
+extracted and run directly in real Node (not just `node --check`) against sample data
+containing an XSS-shaped payload in a profile URL and two same-network GitHub links, confirming
+the payload renders escaped (not raw), both links render independently, and an address-less
+profile is skipped entirely -- the same discipline this file's own `esc()`-into-an-attribute
+finding established earlier in this feature's history.
+
 ## 5. Real, honest, not done
 
 - No real DOCX export — PDF (Layer 3) is the only real exported file format; a separate,
@@ -276,3 +343,6 @@ the unit test suite.
   the original scoping pass but not implemented — a real, separate, smaller follow-up to Layer 2.
 - No live browser verification of the new console.html UI (see §4a) — syntax/structure checked
   directly, a real click-through was not.
+- The Links editor UI (§4f) exposes only `network`/`url` fields, not `username` — the data
+  model and API support it (a link can still be saved with just a username via the API), but
+  the console.html form has no separate field for it; a real, small, later addition if needed.
