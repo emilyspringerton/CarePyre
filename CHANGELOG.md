@@ -1,4 +1,5 @@
 ## 2026-09-09
+- Community Tools: quick-add skills via a comma-separated list in the Resume editor -- paste a list, each word becomes its own skill row, duplicates skipped. Deployed live. Apple #18758. (sess-20260905-0720-ec33e7c5)
 - Community Tools: new 'Links' section in the Resume editor (multiple GitHub/LinkedIn/portfolio entries) + a 'Show links' Target checklist, now actually rendered in the PDF/screen preview. Deployed live. Apples #18752/#18753. (sess-20260905-0720-ec33e7c5)
 - Bespoke resumes: saved Target cards now collapse into a summary with a real Edit button (load a saved target for editing) instead of always rendering fully open. Deployed live. Apple #18747. (sess-20260905-0720-ec33e7c5)
 - Community Tools: 'Community tools' checkbox column added to the admin Users table (console.html), wired to the existing PATCH .../users/{uid} route. Deployed live. Apple #18742. (sess-20260905-0720-ec33e7c5)
