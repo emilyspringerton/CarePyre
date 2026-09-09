@@ -1980,6 +1980,19 @@
   // so the server assigns a fresh one on Save) -- the same real "assign an ID only when one is
   // missing" convention assignResumeIDs already establishes for master resume entries.
   let currentTargets = [];
+  // expandedTargets -- founder real-time, 2026-09-09: "the bespoke resume section needs a way
+  // to load one up for editing." Before this, EVERY saved target rendered as a fully-open edit
+  // form all the time -- functionally editable, but with no real "load it for editing" action,
+  // and unusable once someone has more than a couple of saved targets (every checkbox for
+  // every target, all open at once). Tracked by real object IDENTITY (the actual object
+  // reference inside currentTargets), not by array index or target.id -- indices shift on
+  // Remove/reorder, and a brand-new/cloned target has no id yet (only gets one after Save).
+  // A collapsed target's own full form (name input, checklists, override fields) still exists
+  // in the DOM, just visually hidden -- collectOneTargetFromCard's own querySelector calls (and
+  // the "Save bespoke resumes" button's own "read every .target-card in the DOM" logic) must
+  // keep finding real values regardless of expand state, or saving while one card is collapsed
+  // would silently drop it.
+  let expandedTargets = new Set();
 
   async function loadTargetsUI() {
     try {
@@ -2039,11 +2052,69 @@
     return wrap;
   }
 
+  // describeTargetSummary -- a short, real, human-readable count of what a target actually
+  // shows ("3 jobs, 1 education, 2 skills"), used in the collapsed header so picking which
+  // saved bespoke resume to load doesn't require expanding each one first.
+  function describeTargetSummary(target) {
+    const parts = [
+      [(target.included_work_ids || []).length, 'job'],
+      [(target.included_education_ids || []).length, 'education'],
+      [(target.included_skill_ids || []).length, 'skill'],
+      [(target.included_award_ids || []).length, 'award'],
+    ].filter(([n]) => n > 0).map(([n, label]) => n + ' ' + label + (n === 1 ? '' : 's'));
+    return parts.length ? parts.join(', ') + ' shown' : 'nothing shown yet';
+  }
+
   function renderTargetCard(target, index) {
     const card = document.createElement('div');
     card.className = 'target-card';
     card.dataset.index = String(index);
     card.style.cssText = 'border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem;';
+
+    const expanded = expandedTargets.has(target);
+
+    // Collapsed header -- real, always-visible summary of a SAVED target (name + what it
+    // shows), with the real "load it for editing" action the founder asked for. A brand-new
+    // (unsaved) or just-cloned target is added to expandedTargets before its first render (see
+    // the New/Clone button handlers below), so it opens straight into the editable form instead
+    // of a summary of nothing.
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:0.6rem;flex-wrap:wrap;';
+    const headerText = document.createElement('div');
+    const titleEl = document.createElement('div');
+    titleEl.style.fontWeight = '600';
+    titleEl.textContent = target.name || 'Untitled bespoke resume';
+    const summaryEl = document.createElement('div');
+    summaryEl.className = 'sub';
+    summaryEl.style.margin = '0';
+    summaryEl.textContent = describeTargetSummary(target);
+    headerText.appendChild(titleEl);
+    headerText.appendChild(summaryEl);
+    const editToggleBtn = document.createElement('button');
+    editToggleBtn.type = 'button';
+    editToggleBtn.className = 'small secondary';
+    editToggleBtn.style.cssText = 'margin-top:0;width:auto;flex-shrink:0;';
+    editToggleBtn.textContent = expanded ? 'Done editing' : 'Edit';
+    editToggleBtn.addEventListener('click', () => {
+      if (expandedTargets.has(target)) {
+        expandedTargets.delete(target);
+      } else {
+        expandedTargets.add(target);
+      }
+      renderTargetsUI();
+    });
+    header.appendChild(headerText);
+    header.appendChild(editToggleBtn);
+    card.appendChild(header);
+
+    // bodyWrap -- the real editable form (name field, checklists, overrides). Hidden, not
+    // omitted, when collapsed: collectOneTargetFromCard and the Save button's own
+    // "read every .target-card in the DOM" logic both need these real input elements present
+    // and holding this target's real current values regardless of expand state, or saving
+    // while a card is collapsed would silently drop or blank it.
+    const bodyWrap = document.createElement('div');
+    bodyWrap.hidden = !expanded;
+    bodyWrap.style.marginTop = '0.8rem';
 
     const nameLabel = document.createElement('label');
     nameLabel.textContent = 'Name (e.g. the role or company you’re applying to)';
@@ -2051,8 +2122,8 @@
     nameInput.type = 'text';
     nameInput.dataset.field = 'name';
     nameInput.value = target.name || '';
-    card.appendChild(nameLabel);
-    card.appendChild(nameInput);
+    bodyWrap.appendChild(nameLabel);
+    bodyWrap.appendChild(nameInput);
 
     const master = currentMasterResume || {};
     const sections = [
@@ -2065,8 +2136,8 @@
       const heading = document.createElement('div');
       heading.style.cssText = 'font-weight:600;margin-top:0.6rem;text-transform:capitalize;';
       heading.textContent = 'Show ' + section;
-      card.appendChild(heading);
-      card.appendChild(renderTargetCheckboxList(section, entries, includedIDs, labelOf));
+      bodyWrap.appendChild(heading);
+      bodyWrap.appendChild(renderTargetCheckboxList(section, entries, includedIDs, labelOf));
     }
 
     // Summary/headline overrides -- a real checkbox gates whether this target sends an
@@ -2101,7 +2172,8 @@
       cb.addEventListener('change', () => { field.disabled = !cb.checked; });
       overrideWrap.appendChild(field);
     });
-    card.appendChild(overrideWrap);
+    bodyWrap.appendChild(overrideWrap);
+    card.appendChild(bodyWrap);
 
     const actions = document.createElement('div');
     actions.style.cssText = 'display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.8rem;';
@@ -2115,6 +2187,7 @@
       cloned.id = ''; // real, deliberate: a clone is a genuinely new target, server-assigns its own id on Save
       cloned.name = (cloned.name || 'Untitled') + ' (copy)';
       currentTargets.push(cloned);
+      expandedTargets.add(cloned); // opens straight into the editable form, not a collapsed summary
       renderTargetsUI();
       targetsMessage(true, 'Cloned -- click "Save bespoke resumes" to keep it.');
     });
@@ -2130,6 +2203,7 @@
     // sync the same way every other mutation here already does.
     removeBtn.addEventListener('click', () => {
       currentTargets.splice(Number(card.dataset.index), 1);
+      expandedTargets.delete(target);
       renderTargetsUI();
     });
     const verifyBtn = document.createElement('button');
@@ -2214,7 +2288,9 @@
   }
 
   document.getElementById('targets-add-btn').addEventListener('click', () => {
-    currentTargets.push({ name: '', included_work_ids: [], included_education_ids: [], included_skill_ids: [], included_award_ids: [] });
+    const fresh = { name: '', included_work_ids: [], included_education_ids: [], included_skill_ids: [], included_award_ids: [] };
+    currentTargets.push(fresh);
+    expandedTargets.add(fresh); // opens straight into the editable form, not a collapsed summary
     renderTargetsUI();
   });
 
