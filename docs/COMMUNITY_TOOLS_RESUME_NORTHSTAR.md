@@ -1,7 +1,8 @@
 # NORTHSTAR — Community Tools: Resume/CV Builder + Verifier
 
 **Status:** Shipped — master resume, real bespoke Target variants (show/hide + text overrides),
-and client-side preview templates. No real ATS-safe PDF/DOCX export path yet.
+client-side preview templates, and a real, downloadable, ATS-safe PDF export file (Layer 3).
+No DOCX export path yet.
 **Date:** 2026-09-09
 
 Founder, real-time, verbatim across the ask: "we want to build a tool to maintain and verify
@@ -75,11 +76,11 @@ parseable `startDate`/`endDate` in JSON Resume's own real date format (`YYYY`/`Y
 function — a real, itemized `VerifyResult{Checks: []Check{Rule, Passed, Message}}`, never a
 single opaque score.
 
-**Layer 3 — export-format safety (real, not yet built).** ATS-readability is also a property of
+**Layer 3 — export-format safety (real, shipped).** ATS-readability is also a property of
 the RENDERED document (tables, multi-column layouts, image-only text are all real, documented ATS
 parsing pitfalls at the rendering layer, not the data layer). A real, deliberately plain,
-single-column, real-selectable-text export template is the real way "verify" closes this loop —
-**not built in this pass**, named honestly as Phase 2 below.
+single-column, real-selectable-text PDF export (`internal/resume/pdf.go`'s own `RenderPDF`, built
+on `github.com/go-pdf/fpdf`, no cgo) is the real way "verify" closes this loop — see §4d.
 
 ## 4. Real architecture, as shipped
 
@@ -222,12 +223,52 @@ themselves (a browser's own "Print" / "Save as PDF" works today, untested for re
 quality); no way to save a chosen template preference per Target yet (the template choice is
 session-only, reset on reload).
 
+## 4d. Real PDF export (Layer 3), shipped 2026-09-09
+
+Closes the real gap §3/§4c/§5 all named honestly since this feature first shipped: a real,
+downloadable, ATS-safe PDF FILE, not just a screen preview. `internal/resume/pdf.go`'s
+`RenderPDF(r *Resume) ([]byte, error)` — one deliberately plain, single-column,
+real-selectable-text (never an image) layout, built on `github.com/go-pdf/fpdf` (the maintained
+`jung-kurt/gofpdf` fork), a real, pure-Go, no-cgo library matching this whole repo's own
+established no-cgo discipline. Real, named limitation: the built-in Arial core font only covers
+Windows-1252 — non-Latin scripts (CJK, Cyrillic) degrade gracefully (drop/render as `?`), not a
+silent corruption of the rest of the page; a real embedded-TTF-font pass would be needed to close
+that gap fully, not attempted here.
+
+Two real routes: `GET /api/v1/community-tools/resume/export.pdf` (the master resume) and
+`GET /api/v1/community-tools/resume/targets/{id}/export.pdf` (a resolved Target's own real,
+filtered view) — both `community-tools.access`-gated like every other route in this feature,
+both served through one shared `writeResumePDF` helper. Real, deliberate, found-before-shipping
+caution: a Target's own real, user-controlled `Name` field going straight into an HTTP response
+header (`Content-Disposition`'s filename) is a real header-injection/malformed-response risk —
+the same class of bug this feature's own console.html work already found and fixed once
+(`esc()` spliced into an HTML attribute, §4a). Closed here by `pdfFilename`, a narrow allowlist
+sanitizer (letters/digits/hyphen/underscore only, everything else collapsed to a hyphen, fixed
+`.pdf` extension always appended) — live-verified against a target literally named
+`Kitchen Jobs "Special"`, confirming the downloaded `Content-Disposition` header stays
+well-formed (one real, correctly quoted filename) rather than breaking.
+
+Real, downloadable buttons in `console.html`: "Download PDF" in the Preview & templates card
+(downloads whatever's currently selected — master or Target), and a real, per-card "Export PDF"
+button alongside each Target's own Clone/Preview/Verify/Remove actions. Both fetch the PDF as a
+blob through the caller's own real bearer token (a plain `<a href>` can't carry it), then trigger
+a real browser download via a throwaway object URL — the filename used is whatever the server's
+own `Content-Disposition` header actually said, not reconstructed client-side.
+
+Live-verified end to end against a real, fresh-SQLite-booted `idunapro` binary (not just
+`go test`): register → flip `is_community_tools_enabled` → log in for a token carrying the real
+`community-tools.access` permission → save a real resume → `GET .../export.pdf` returns a real,
+OS-recognized (`file(1)`-confirmed) single-page PDF with the correct `Content-Type`/
+`Content-Disposition` headers; the quoted-target-name case above confirmed live too, not just in
+the unit test suite.
+
 ## 5. Real, honest, not done
 
-- **Layer 3 (real, exported ATS-safe PDF/DOCX file generation) is not built** — the preview
-  templates (§4c) are real, styled, on-screen/printable HTML, not a downloadable file the
-  founder's own original "verify → export" loop (§3) described; a browser's own Print-to-PDF is
-  the real, current, untested stand-in.
+- No real DOCX export — PDF (Layer 3) is the only real exported file format; a separate,
+  un-attempted follow-up if ever needed.
+- No visual parity between the exported PDF and the two web preview templates (Classic/Clean
+  Tech) — the PDF is deliberately one plain, structural-safety-first layout, not a rendering of
+  either screen template.
 - Per-entry (not just per-target) text overrides — "even different little summary texts" is
   satisfied at the Basics (summary/headline) level only, not per-work-entry, named honestly as
   a real, separate, smaller possible extension if ever needed.

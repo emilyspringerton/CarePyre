@@ -45,8 +45,11 @@ not working infrastructure" — no longer true. Real, shipped, live infrastructu
   show/hide selections over the master's own Work/Education/Skill/Award entries plus optional
   summary/headline overrides (`GET`/`PUT .../resume/targets`, `.../targets/{id}/resolved`,
   `.../targets/{id}/verify`), with a real Clone/Verify/Preview/Remove UI. Real client-side
-  preview with two switchable templates (Classic/Clean Tech). No real ATS-safe PDF/DOCX export
-  file yet — preview only.
+  preview with two switchable templates (Classic/Clean Tech). Real, downloadable, ATS-safe PDF
+  export (Layer 3, `GET .../resume/export.pdf` and `.../targets/{id}/export.pdf`, via
+  IDUNA_PRO's `internal/resume/pdf.go`) — a real "Download PDF"/"Export PDF" button in
+  `console.html` for the master resume and each saved Target. No DOCX export yet. See
+  `docs/COMMUNITY_TOOLS_RESUME_NORTHSTAR.md` §4d for the full design.
 
 `source/gemini-transcript-2026-08-09.md` is still the repo's real "skunkworks origin" artifact —
 an ingested Gemini conversation about ReLU activation function variants, unrelated to the

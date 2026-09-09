@@ -603,10 +603,12 @@
           <select id="preview-source-select">
             <option value="">Master resume</option>
           </select>
-          <div style="display:flex; gap:0.6rem; margin:0.6rem 0 1rem;">
+          <div style="display:flex; gap:0.6rem; margin:0.6rem 0 1rem; flex-wrap:wrap;">
             <button type="button" class="small secondary" id="preview-template-classic" data-template="classic">Classic</button>
             <button type="button" class="small secondary" id="preview-template-tech" data-template="tech">Clean Tech</button>
+            <button type="button" class="small" id="preview-download-pdf-btn" style="margin-left:auto;">Download PDF</button>
           </div>
+          <div id="preview-download-error" class="error hidden"></div>
           <div id="resume-preview-wrap"></div>
         </div>
       </div>
@@ -2135,9 +2137,22 @@
       document.getElementById('preview-source-select').value = target.id;
       loadPreviewSource(target.id);
     });
+    const exportBtn = document.createElement('button');
+    exportBtn.type = 'button';
+    exportBtn.className = 'small secondary';
+    exportBtn.style.cssText = 'margin-top:0;width:auto;';
+    exportBtn.textContent = 'Export PDF';
+    exportBtn.addEventListener('click', () => {
+      if (!target.id) {
+        targetsMessage(false, 'Save this bespoke resume first, then Export it.');
+        return;
+      }
+      downloadResumePDF(target.id, exportBtn, null);
+    });
     actions.appendChild(cloneBtn);
     actions.appendChild(previewBtn);
     actions.appendChild(verifyBtn);
+    actions.appendChild(exportBtn);
     actions.appendChild(removeBtn);
     card.appendChild(actions);
 
@@ -2236,6 +2251,48 @@
   document.getElementById('preview-source-select').addEventListener('change', (e) => loadPreviewSource(e.target.value));
   document.getElementById('preview-template-classic').addEventListener('click', () => { currentPreviewTemplate = 'classic'; renderPreview(); });
   document.getElementById('preview-template-tech').addEventListener('click', () => { currentPreviewTemplate = 'tech'; renderPreview(); });
+
+  // downloadResumePDF -- the real "Layer 3" gap named honestly since this feature first shipped
+  // its screen-only preview templates above: a real, downloadable, ATS-safe PDF FILE. Fetched as
+  // a blob through authHeaders() rather than a plain <a href="..."> (which can't carry the
+  // bearer token IDUNA_PRO's own export.pdf routes require) -- the standard pattern for an
+  // authenticated file download. The filename comes from the server's own real Content-
+  // Disposition header (IDUNA_PRO's pdfFilename sanitizer), not reconstructed client-side, so
+  // what lands on disk always matches what the server actually decided to call it.
+  async function downloadResumePDF(targetId, btn, errEl) {
+    const url = targetId
+      ? API_BASE + '/community-tools/resume/targets/' + encodeURIComponent(targetId) + '/export.pdf'
+      : API_BASE + '/community-tools/resume/export.pdf';
+    const origText = btn ? btn.textContent : null;
+    if (errEl) errEl.classList.add('hidden');
+    if (btn) { btn.disabled = true; btn.textContent = 'Downloading…'; }
+    try {
+      const res = await fetch(url, { headers: authHeaders() });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const blob = await res.blob();
+      let filename = 'resume.pdf';
+      const cd = res.headers.get('Content-Disposition') || '';
+      const m = cd.match(/filename="([^"]*)"/);
+      if (m) filename = m[1];
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      if (errEl) { errEl.textContent = 'Could not download PDF: ' + err.message; errEl.classList.remove('hidden'); }
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = origText; }
+    }
+  }
+
+  document.getElementById('preview-download-pdf-btn').addEventListener('click', (e) => {
+    const sourceId = document.getElementById('preview-source-select').value;
+    downloadResumePDF(sourceId || null, e.currentTarget, document.getElementById('preview-download-error'));
+  });
 
   function renderPreview() {
     if (!currentPreviewResume) return;
