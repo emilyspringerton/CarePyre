@@ -1,6 +1,6 @@
 # NORTHSTAR — Community Tools: Resume/CV Builder + Verifier
 
-**Status:** Shipped, v0 backend. No frontend UI yet.
+**Status:** Shipped, v0 backend + frontend (console.html). Layer 3 export rendering not built.
 **Date:** 2026-09-09
 
 Founder, real-time, verbatim across the ask: "we want to build a tool to maintain and verify
@@ -115,11 +115,37 @@ SQLite file, the new migration applied cleanly, `resumes` table and the new
 `internal/http/handlers/community_tools_test.go`), all passing, full existing suite (`go test
 ./...`) green, zero regressions.
 
+## 4a. Real frontend, shipped same day
+
+New "Resume" sidebar item in `console.html`, hidden by default (shown only when
+`effective_permissions` includes `community-tools.access` — a UX convenience only, every real
+call still requires the permission server-side, the same convention `nav-admin` already
+establishes). Real, editable Basics fields (name/headline/email/phone/summary), real dynamic,
+repeatable Work Experience and Education entry lists (add/remove rows, matching JSON Resume's
+own real array shape, not a fixed-count form), Save (`PUT`) and Verify (`POST .../verify`)
+buttons, and a real, itemized verify report (per-rule pass/fail + message, never a single
+score).
+
+**Real, live-found correctness issue fixed while building this, not shipped broken**: entry rows
+were first drafted via string-concatenated `innerHTML` with `esc()`'d values spliced into
+`value="..."` attributes — `esc()` (already defined earlier in this file) only escapes
+`&`/`<`/`>` for safe TEXT CONTENT, not the double-quote a real field value (a quoted job title,
+an apostrophe in a name) could contain, which would break out of the attribute and inject HTML.
+Fixed by building entry-row inputs via `document.createElement` + setting `.value` as a real DOM
+property (never HTML-parsed), not string concatenation — the only place this file still builds
+HTML via `esc()` + string concat is the verify-results panel, which is a genuinely safe text-
+content position, not an attribute value.
+
+JS syntax verified directly (`node --check` against the extracted `<script>` block); HTML
+`<div>`/`</div>` tag balance verified directly (119/119) — this repo has no build/test pipeline
+for static HTML, so these are the real, honest limits of what got verified here; no live
+browser/click-through test was run.
+
 ## 5. Real, honest, not done
 
-- **No frontend UI.** The real "maintain" half of "maintain and verify" — a web form in
-  `console.html` (or a new page) over this same API — is real, separate, not built in this pass.
 - **Layer 3 (export-format safety) is not built.** No ATS-safe PDF/DOCX render path exists yet.
 - **No multiple resume variants per user** — v0 is deliberately one resume per account.
 - Section-label vocabulary advisory checks (real ATS advice about non-standard headers) named in
   the original scoping pass but not implemented — a real, separate, smaller follow-up to Layer 2.
+- No live browser verification of the new console.html UI (see §4a) — syntax/structure checked
+  directly, a real click-through was not.

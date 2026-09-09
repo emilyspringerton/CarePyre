@@ -39,7 +39,9 @@ not working infrastructure" — no longer true. Real, shipped, live infrastructu
   permission), v0's own real first tool a resume/CV builder + verifier against the real JSON
   Resume standard (`GET`/`PUT /api/v1/community-tools/resume`,
   `POST /api/v1/community-tools/resume/verify`) — see `docs/COMMUNITY_TOOLS_RESUME_NORTHSTAR.md`
-  for the full design. Backend only so far; no `console.html` UI yet.
+  for the full design. Real "Resume" panel now live in `console.html` too (hidden nav item,
+  real editable Basics + dynamic Work/Education entry lists, Save + Verify with a real, itemized
+  per-rule report) — no ATS-safe export rendering yet.
 
 `source/gemini-transcript-2026-08-09.md` is still the repo's real "skunkworks origin" artifact —
 an ingested Gemini conversation about ReLU activation function variants, unrelated to the

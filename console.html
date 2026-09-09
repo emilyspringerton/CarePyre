@@ -278,6 +278,16 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>
         <span>Account</span>
       </button>
+      <!-- Community Tools > Resume/CV builder (2026-09-09, founder real-time: "build it into
+           carepyre... community tools... gated so that accounts need a feature flag set").
+           Hidden by default -- shown only when effective_permissions includes
+           community-tools.access, itself driven by the account's own IsCommunityToolsEnabled
+           flag (server-enforced too -- this is a UX convenience, not the actual gate, same
+           pattern nav-admin below already establishes). -->
+      <button class="navbtn hidden" data-page="resume" id="nav-resume" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M15 3v5h5"/><path d="M8 13h8"/><path d="M8 17h5"/></svg>
+        <span>Resume</span>
+      </button>
       <button class="navbtn hidden" data-page="admin" id="nav-admin" type="button">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></svg>
         <span>Admin</span>
@@ -449,6 +459,70 @@
               </div>
             </div>
           </details>
+        </div>
+      </div>
+
+      <!-- Community Tools > Resume/CV builder page: only reachable (nav item shown) when the
+           signed-in identity's own effective_permissions includes community-tools.access
+           (server-enforced too, same real convention page-admin's own header comment
+           documents). Data model is a direct, field-for-field mirror of the real JSON Resume
+           standard (jsonresume.org) -- IDUNA_PRO/internal/resume/model.go; see
+           docs/COMMUNITY_TOOLS_RESUME_NORTHSTAR.md for the full design. Verify never renders a
+           single opaque score -- always the real, itemized per-rule report the API returns. -->
+      <div class="page" id="page-resume">
+        <div class="card narrow-card">
+          <h1>Resume / CV</h1>
+          <p class="sub">Maintain your resume as real, structured data (the same open
+            <a href="https://jsonresume.org/" target="_blank" rel="noreferrer noopener">JSON Resume</a>
+            standard many real tools support), then verify it against a real, visible rule set --
+            not a third-party site -- built to catch the actual things that break machine
+            (ATS) parsing.</p>
+          <div id="resume-error" class="error hidden"></div>
+          <div id="resume-success" class="success-msg hidden"></div>
+
+          <form id="resume-form">
+            <details class="section" open>
+              <summary>Basics</summary>
+              <div class="body">
+                <label for="resume-name">Full name</label>
+                <input id="resume-name" type="text" required>
+                <label for="resume-label">Headline</label>
+                <input id="resume-label" type="text" placeholder="e.g. Line Cook, Warehouse Associate">
+                <label for="resume-email">Email</label>
+                <input id="resume-email" type="email" required>
+                <label for="resume-phone">Phone</label>
+                <input id="resume-phone" type="tel">
+                <label for="resume-summary">Summary</label>
+                <textarea id="resume-summary" rows="4"></textarea>
+              </div>
+            </details>
+
+            <details class="section" open>
+              <summary>Work experience</summary>
+              <div class="body">
+                <div id="resume-work-list"></div>
+                <button type="button" class="small secondary" id="resume-work-add" style="margin-top:0.6rem;">+ Add work entry</button>
+              </div>
+            </details>
+
+            <details class="section" open>
+              <summary>Education</summary>
+              <div class="body">
+                <div id="resume-education-list"></div>
+                <button type="button" class="small secondary" id="resume-education-add" style="margin-top:0.6rem;">+ Add education entry</button>
+              </div>
+            </details>
+
+            <div style="display:flex; gap:0.7rem; margin-top:1rem;">
+              <button type="submit" style="width:auto;">Save resume</button>
+              <button type="button" id="resume-verify-btn" class="secondary" style="width:auto; margin-top:0;">Verify</button>
+            </div>
+          </form>
+
+          <div id="resume-verify-results" class="hidden" style="margin-top:1.5rem;">
+            <h2 id="resume-verify-heading" style="margin-bottom:0.4rem;"></h2>
+            <div id="resume-verify-checks"></div>
+          </div>
         </div>
       </div>
 
@@ -823,6 +897,9 @@
     // Users/Mail-accounts admin panels (which expose every other participant, SIP assignment,
     // and password reset -- all still users.admin-only server-side).
     const isProvider = perms.includes('mail-accounts.provision') && !isAdmin;
+    // Community Tools > Resume/CV builder -- real, per-account feature flag (2026-09-09), not
+    // tied to the admin/provider tiers above at all.
+    const isCommunityTools = perms.includes('community-tools.access');
     document.getElementById('admin-card').classList.toggle('hidden', !isAdmin);
     document.getElementById('twilio-card').classList.toggle('hidden', !isTwilioAdmin);
     document.getElementById('mail-accounts-card').classList.toggle('hidden', !isAdmin);
@@ -831,6 +908,7 @@
     document.getElementById('contacts-card').classList.toggle('hidden', !isContactsAdmin);
     document.getElementById('provider-card').classList.toggle('hidden', !isProvider);
     document.getElementById('nav-admin').classList.toggle('hidden', !(isAdmin || isTwilioAdmin || isBrandingAdmin || isComplianceAdmin || isContactsAdmin || isProvider));
+    document.getElementById('nav-resume').classList.toggle('hidden', !isCommunityTools);
     if (isAdmin) loadAdminUsers();
     if (isTwilioAdmin) loadTwilioStatus();
     if (isAdmin) loadMailAccounts();
@@ -838,6 +916,7 @@
     if (isComplianceAdmin) loadComplianceRecording();
     if (isContactsAdmin) loadContacts();
     if (isProvider) loadProviderMailboxes();
+    if (isCommunityTools) loadResume();
   }
 
   // ---- Your SIP account (CP-SIP-1244543543) ----
@@ -1539,6 +1618,187 @@
     }
   });
 
+  // ---- Community Tools: Resume/CV builder (2026-09-09) ----
+  // See docs/COMMUNITY_TOOLS_RESUME_NORTHSTAR.md for the full design. Basics are a fixed form;
+  // work/education are real, dynamic, repeatable entry lists (add/remove rows) -- the JSON
+  // Resume standard's own real shape, not a CarePyre-invented one. Verify never renders a
+  // single opaque score -- always the real, itemized per-rule report the API returns.
+  //
+  // Real, deliberate choice: entry rows are built via document.createElement + .value
+  // (a DOM property, never HTML-parsed) rather than string-concatenated innerHTML with
+  // esc()'d values spliced into value="..." attributes -- esc() (see its own definition
+  // above) only escapes &/</> for safe TEXT CONTENT, not the double-quote a real field value
+  // (a quoted job title, an apostrophe in a name) could contain, which would otherwise break
+  // out of an attribute string. Only the static, non-user-controlled label text uses a plain
+  // string template.
+  function resumeMessage(ok, text) {
+    const errEl = document.getElementById('resume-error');
+    const okEl = document.getElementById('resume-success');
+    errEl.classList.add('hidden');
+    okEl.classList.add('hidden');
+    (ok ? okEl : errEl).textContent = text;
+    (ok ? okEl : errEl).classList.remove('hidden');
+  }
+
+  const RESUME_WORK_FIELDS = [
+    { key: 'name', label: 'Employer', type: 'text' },
+    { key: 'position', label: 'Position', type: 'text' },
+    { key: 'startDate', label: 'Start date', type: 'text', placeholder: 'YYYY-MM' },
+    { key: 'endDate', label: 'End date (leave blank if current)', type: 'text', placeholder: 'YYYY-MM' },
+    { key: 'summary', label: 'Summary', type: 'textarea' },
+  ];
+  const RESUME_EDUCATION_FIELDS = [
+    { key: 'institution', label: 'Institution', type: 'text' },
+    { key: 'area', label: 'Area of study', type: 'text' },
+    { key: 'studyType', label: 'Credential (e.g. Diploma, Certificate)', type: 'text' },
+    { key: 'startDate', label: 'Start date', type: 'text', placeholder: 'YYYY-MM' },
+    { key: 'endDate', label: 'End date (leave blank if current)', type: 'text', placeholder: 'YYYY-MM' },
+  ];
+
+  function makeResumeEntryRow(container, fields, existing) {
+    const row = document.createElement('div');
+    row.className = 'resume-entry-row';
+    row.style.cssText = 'border:1px solid var(--border);border-radius:8px;padding:0.8rem;margin-bottom:0.8rem;';
+    for (const f of fields) {
+      const label = document.createElement('label');
+      label.textContent = f.label;
+      row.appendChild(label);
+      const el = document.createElement(f.type === 'textarea' ? 'textarea' : 'input');
+      el.dataset.field = f.key;
+      if (f.type === 'textarea') {
+        el.rows = 2;
+      } else {
+        el.type = f.type;
+        if (f.placeholder) el.placeholder = f.placeholder;
+      }
+      el.value = (existing && existing[f.key]) || '';
+      row.appendChild(el);
+    }
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'small secondary';
+    removeBtn.style.marginTop = '0.4rem';
+    removeBtn.textContent = 'Remove';
+    removeBtn.addEventListener('click', () => row.remove());
+    row.appendChild(removeBtn);
+    container.appendChild(row);
+    return row;
+  }
+
+  function addResumeWorkRow(existing) {
+    return makeResumeEntryRow(document.getElementById('resume-work-list'), RESUME_WORK_FIELDS, existing);
+  }
+  function addResumeEducationRow(existing) {
+    return makeResumeEntryRow(document.getElementById('resume-education-list'), RESUME_EDUCATION_FIELDS, existing);
+  }
+  document.getElementById('resume-work-add').addEventListener('click', () => addResumeWorkRow());
+  document.getElementById('resume-education-add').addEventListener('click', () => addResumeEducationRow());
+
+  function collectResumeEntries(container, fields) {
+    const out = [];
+    container.querySelectorAll('.resume-entry-row').forEach((row) => {
+      const entry = {};
+      let hasAny = false;
+      for (const f of fields) {
+        const el = row.querySelector('[data-field="' + f.key + '"]');
+        const v = el ? el.value.trim() : '';
+        if (v) hasAny = true;
+        entry[f.key] = v;
+      }
+      if (hasAny) out.push(entry);
+    });
+    return out;
+  }
+
+  async function loadResume() {
+    try {
+      const res = await fetch(API_BASE + '/community-tools/resume', { headers: authHeaders() });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const r = await res.json();
+      const basics = r.basics || {};
+      document.getElementById('resume-name').value = basics.name || '';
+      document.getElementById('resume-label').value = basics.label || '';
+      document.getElementById('resume-email').value = basics.email || '';
+      document.getElementById('resume-phone').value = basics.phone || '';
+      document.getElementById('resume-summary').value = basics.summary || '';
+      document.getElementById('resume-work-list').innerHTML = '';
+      document.getElementById('resume-education-list').innerHTML = '';
+      (r.work || []).forEach((w) => addResumeWorkRow(w));
+      (r.education || []).forEach((e) => addResumeEducationRow(e));
+    } catch (err) {
+      resumeMessage(false, 'Could not load your resume: ' + err.message);
+    }
+  }
+
+  document.getElementById('resume-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = {
+      basics: {
+        name: document.getElementById('resume-name').value.trim(),
+        label: document.getElementById('resume-label').value.trim(),
+        email: document.getElementById('resume-email').value.trim(),
+        phone: document.getElementById('resume-phone').value.trim(),
+        summary: document.getElementById('resume-summary').value.trim(),
+      },
+      work: collectResumeEntries(document.getElementById('resume-work-list'), RESUME_WORK_FIELDS),
+      education: collectResumeEntries(document.getElementById('resume-education-list'), RESUME_EDUCATION_FIELDS),
+    };
+    try {
+      const res = await fetch(API_BASE + '/community-tools/resume', {
+        method: 'PUT',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+        body: JSON.stringify(payload),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        resumeMessage(false, body.error || ('Could not save resume (HTTP ' + res.status + ').'));
+        return;
+      }
+      resumeMessage(true, 'Resume saved.');
+      document.getElementById('resume-verify-results').classList.add('hidden');
+    } catch (err) {
+      resumeMessage(false, 'Could not reach the console API: ' + err.message);
+    }
+  });
+
+  document.getElementById('resume-verify-btn').addEventListener('click', async () => {
+    try {
+      const res = await fetch(API_BASE + '/community-tools/resume/verify', {
+        method: 'POST',
+        headers: authHeaders(),
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const result = await res.json();
+      renderResumeVerify(result);
+    } catch (err) {
+      resumeMessage(false, 'Could not verify: ' + err.message);
+    }
+  });
+
+  // renderResumeVerify -- the real, itemized per-rule report (never a single opaque score,
+  // matching "i dont want to put my data into some rando site" directly). c.rule/c.message
+  // are esc()'d before going into innerHTML here -- safe in THIS context (plain text content
+  // position, not an attribute value), unlike makeResumeEntryRow's own field values above.
+  function renderResumeVerify(result) {
+    const wrap = document.getElementById('resume-verify-results');
+    const heading = document.getElementById('resume-verify-heading');
+    const checksEl = document.getElementById('resume-verify-checks');
+    wrap.classList.remove('hidden');
+    heading.textContent = result.passed ? 'Passed — machine-readable' : 'Needs attention';
+    heading.style.color = result.passed ? 'var(--blue-dark)' : 'var(--error)';
+    checksEl.innerHTML = '';
+    (result.checks || []).forEach((c) => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:0.6rem;align-items:flex-start;padding:0.4rem 0;border-bottom:1px solid var(--border);';
+      const mark = c.passed ? '✓' : '✗';
+      const markColor = c.passed ? 'var(--blue-dark)' : 'var(--error)';
+      row.innerHTML = '<span style="color:' + markColor + ';font-weight:700;">' + mark + '</span>' +
+        '<div><div style="font-weight:600;">' + esc(c.rule) + '</div>' +
+        (c.message ? '<div class="sub" style="margin:0.1rem 0 0;">' + esc(c.message) + '</div>' : '') + '</div>';
+      checksEl.appendChild(row);
+    });
+  }
+
   // ---- Compliance recording (CP-COMPLIANCE-REC-1) ----
   function complianceMessage(ok, text) {
     const errEl = document.getElementById('compliance-error');
@@ -1864,6 +2124,7 @@
     document.getElementById('contacts-card').classList.add('hidden');
     document.getElementById('provider-card').classList.add('hidden');
     document.getElementById('nav-admin').classList.add('hidden');
+    document.getElementById('nav-resume').classList.add('hidden');
     showPage('mail');
     els.authMain.classList.remove('hidden');
     els.authCard.classList.remove('hidden');
