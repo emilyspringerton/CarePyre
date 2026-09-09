@@ -1,4 +1,5 @@
 ## 2026-09-09
+- feat(community-tools): bespoke Target resume UI + preview templates in console.html -- checkbox selection per master entry, summary/headline overrides, Clone/Verify/Preview/Remove, two switchable CSS templates. Real bug found+fixed (Remove/re-render array desync). Apple #18733. (sess-20260905-0720-ec33e7c5)
 - feat(community-tools): real Resume/CV builder + verifier panel in console.html -- Basics fields, dynamic Work/Education entry lists, Save+Verify with itemized per-rule report. Fixed a real HTML-attribute-injection risk found before shipping (esc() into value="..." -- switched to safe DOM property assignment). Apple #18729. (sess-20260905-0720-ec33e7c5)
 
 - docs: Community Tools resume/CV builder + verifier NORTHSTAR added -- real gated feature on the existing IDUNA_PRO instance. Apple #18725. (sess-20260905-0720-ec33e7c5)
