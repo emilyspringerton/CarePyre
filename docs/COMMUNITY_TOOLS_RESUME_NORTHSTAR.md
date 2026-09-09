@@ -329,6 +329,17 @@ the payload renders escaped (not raw), both links render independently, and an a
 profile is skipped entirely -- the same discipline this file's own `esc()`-into-an-attribute
 finding established earlier in this feature's history.
 
+## 4g. Real quick-add for skills, shipped 2026-09-09
+
+Founder real-time: "ok we need a way to quick add skills via a comma separated list." A new
+"Quick add" field above the Skills list — paste or type a comma-separated list, hit Add (or
+press Enter), and each word becomes its own real skill row through the same
+`addResumeSkillRow`/`makeResumeEntryRow` machinery "+ Add skill" already uses one at a time. No
+new save path or backend change — reuses the existing whole-document PUT exactly as before.
+Skips anything that case-insensitively matches a skill already on the page, including
+duplicates within the same paste. Verified directly: the parsing/dedup algorithm was extracted
+and run in real Node against comma/whitespace edge cases, all pass.
+
 ## 5. Real, honest, not done
 
 - No real DOCX export — PDF (Layer 3) is the only real exported file format; a separate,
