@@ -381,6 +381,19 @@ approximation of the PDF's own two-column layout, not pixel-matched — see §5'
 below). Both PDF download paths (the Preview card's button and each Target's own inline "Export
 PDF" button) now pass the currently-selected preview template through as a real query param.
 
+## 4i. Real auto-sort for Work/Education/Awards, fixed 2026-09-09
+
+Kanban card CVB-12434 (the real IDUNA priority queue, position 0), founder real-time: "the work
+history needs to auto sort i put a new one 2006-present and it went to the bottom of the resume
+instead of the top." `resume.SortByRecency` reorders Work/Education/Awards to the real, standard
+most-recent-first convention every time the resume is saved — a currently-ongoing entry (no end
+date) always sorts first, ahead of anything already ended. Wired into `saveResume`, the one real,
+shared choke point every write path (whole-document PUT and every single-entry
+POST/PATCH/DELETE) already reduces to, so this is guaranteed regardless of which API surface made
+the edit. Live-verified: the real, existing production data for a real account contained an
+entry closely matching the exact reported scenario, previously buried near the bottom — re-sorted
+using the same shipped function, confirmed it now ranks near the top.
+
 ## 5. Real, honest, not done
 
 - No real DOCX export — PDF (Layer 3) is the only real exported file format; a separate,
