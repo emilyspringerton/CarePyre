@@ -2369,8 +2369,28 @@
     return out;
   }
 
+  // allIDs -- founder real-time, 2026-09-09: "i removed all my bespoke resumes, created a new
+  // bespoke resume, and i am expecting it to default to the exact same as the master resume."
+  // Real, corrected default: a brand-new target now starts with EVERY current master entry
+  // selected (a real, full copy of the master's own current shape) rather than empty -- the
+  // real, common tailoring workflow is subtractive (start from everything, hide what's not
+  // relevant to THIS opportunity), not additive (start from nothing, add pieces back). Resolve
+  // itself is unchanged: an EXPLICITLY emptied selection still resolves to empty, matching its
+  // own real "nothing selected means nothing shown" contract -- this only changes what a new
+  // target's checkboxes start out checked as.
+  function allIDs(entries) {
+    return (entries || []).map((e) => e.id).filter(Boolean);
+  }
   document.getElementById('targets-add-btn').addEventListener('click', () => {
-    const fresh = { name: '', included_work_ids: [], included_education_ids: [], included_skill_ids: [], included_award_ids: [], included_profile_ids: [] };
+    const master = currentMasterResume || {};
+    const fresh = {
+      name: '',
+      included_work_ids: allIDs(master.work),
+      included_education_ids: allIDs(master.education),
+      included_skill_ids: allIDs(master.skills),
+      included_award_ids: allIDs(master.awards),
+      included_profile_ids: allIDs((master.basics || {}).profiles),
+    };
     currentTargets.push(fresh);
     expandedTargets.add(fresh); // opens straight into the editable form, not a collapsed summary
     renderTargetsUI();
