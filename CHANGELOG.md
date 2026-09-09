@@ -1,4 +1,5 @@
 ## 2026-09-09
+- Community Tools: new 'Compact' preview template + template-aware PDF downloads (Download PDF/Export PDF now honor the selected style). Deployed live. Apple #18765. (sess-20260905-0720-ec33e7c5)
 - Community Tools: '+ New bespoke resume' now defaults to every master entry selected (subtractive tailoring), not an empty selection. Deployed live. Apple #18760. (sess-20260905-0720-ec33e7c5)
 - Community Tools: quick-add skills via a comma-separated list in the Resume editor -- paste a list, each word becomes its own skill row, duplicates skipped. Deployed live. Apple #18758. (sess-20260905-0720-ec33e7c5)
 - Community Tools: new 'Links' section in the Resume editor (multiple GitHub/LinkedIn/portfolio entries) + a 'Show links' Target checklist, now actually rendered in the PDF/screen preview. Deployed live. Apples #18752/#18753. (sess-20260905-0720-ec33e7c5)
