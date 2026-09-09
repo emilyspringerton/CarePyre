@@ -351,13 +351,45 @@ Skips anything that case-insensitively matches a skill already on the page, incl
 duplicates within the same paste. Verified directly: the parsing/dedup algorithm was extracted
 and run in real Node against comma/whitespace edge cases, all pass.
 
+## 4h. Real "Compact" template + candidate name/timestamp in exports, shipped 2026-09-09
+
+Founder real-time: "add a new output template compact that manages to get the experience and
+education like into 2 columns or something so we can get more skills on the page and keep it 1
+page" / "the downloaded resume should include the candidate name and the export timestamp."
+
+`resume.RenderPDF` now takes a `template` argument. "classic" (unchanged) stays the one plain,
+single-column, ATS-safe layout. "compact" is a new, real, deliberately OPT-IN layout: Experience
+and Education render in two manually-positioned columns (a real `colState` helper tracks each
+column's own x/width/y cursor, since fpdf's own newline handling always resets X to the page
+margin, never an arbitrary column start), freeing vertical space for a fuller Skills section.
+Named honestly, not hidden: this is a real trade-off against the same ATS multi-column parsing
+risk "classic" exists specifically to avoid — choose "classic" for an ATS submission, "compact"
+for a human reviewer or a printed copy where density matters more.
+
+Every generated PDF (both templates) now carries a real footer via fpdf's own `SetFooterFunc` —
+the candidate's name and the exact export timestamp, repeating on every page. The downloaded
+filename also now includes the candidate's real name plus today's date, not just a generic
+"resume.pdf"/target-name-only filename.
+
+Real, direct verification beyond `go test`: decompressed the actual public `RenderPDF("compact")`
+output's own FlateDecode content stream and confirmed "Experience" and "Education" text render
+at genuinely different, non-overlapping x-coordinates with a real gutter between them — not just
+that it returns without error.
+
+New "Compact" button in console.html's Preview & templates card (a real CSS grid screen
+approximation of the PDF's own two-column layout, not pixel-matched — see §5's own updated note
+below). Both PDF download paths (the Preview card's button and each Target's own inline "Export
+PDF" button) now pass the currently-selected preview template through as a real query param.
+
 ## 5. Real, honest, not done
 
 - No real DOCX export — PDF (Layer 3) is the only real exported file format; a separate,
   un-attempted follow-up if ever needed.
-- No visual parity between the exported PDF and the two web preview templates (Classic/Clean
-  Tech) — the PDF is deliberately one plain, structural-safety-first layout, not a rendering of
-  either screen template.
+- No pixel-level visual parity between the exported PDF and any of the three web preview
+  templates (Classic/Clean Tech/Compact) — each of the PDF's two real layouts (classic/compact)
+  and each of the three screen styles is its own real, independent rendering, not a shared
+  template engine; "Compact" in both places pursues the same real two-column idea, not identical
+  output.
 - Per-entry (not just per-target) text overrides — "even different little summary texts" is
   satisfied at the Basics (summary/headline) level only, not per-work-entry, named honestly as
   a real, separate, smaller possible extension if ever needed.

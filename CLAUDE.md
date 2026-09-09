@@ -54,7 +54,10 @@ not working infrastructure" — no longer true. Real, shipped, live infrastructu
   published `GET /api/v1/community-tools/openapi.json` spec (§4e), and a real "Links" section
   supporting multiple GitHub/LinkedIn/portfolio entries — each independently addressable,
   tailorable per bespoke Target, and now actually rendered in both the PDF export and the
-  screen preview (previously in the data model but invisible everywhere) (§4f).
+  screen preview (previously in the data model but invisible everywhere) (§4f). Real quick-add
+  for skills via a comma-separated list (§4g). Real "Compact" template (a real two-column
+  Experience/Education layout, both in the PDF and as a screen preview option) plus a real
+  candidate name + export timestamp in every downloaded PDF's footer and filename (§4h).
 
 `source/gemini-transcript-2026-08-09.md` is still the repo's real "skunkworks origin" artifact —
 an ingested Gemini conversation about ReLU activation function variants, unrelated to the
