@@ -550,7 +550,17 @@
             <details class="section" open>
               <summary>Skills</summary>
               <div class="body">
-                <div id="resume-skills-list"></div>
+                <!-- Quick add -- founder real-time, 2026-09-09: "we need a way to quick add
+                     skills via a comma separated list." Each comma-separated word becomes its
+                     own real, independent skill row (same shape "+ Add skill" produces one at a
+                     time) -- name only; use a row's own Level/Keywords fields afterward for
+                     anything more specific. -->
+                <label for="resume-skills-quickadd">Quick add (comma-separated)</label>
+                <div style="display:flex; gap:0.5rem;">
+                  <input type="text" id="resume-skills-quickadd" placeholder="e.g. Python, Kubernetes, Docker" style="flex:1;">
+                  <button type="button" class="small secondary" id="resume-skills-quickadd-btn" style="margin-top:0;width:auto;">Add</button>
+                </div>
+                <div id="resume-skills-list" style="margin-top:0.8rem;"></div>
                 <button type="button" class="small secondary" id="resume-skills-add" style="margin-top:0.6rem;">+ Add skill</button>
               </div>
             </details>
@@ -1856,6 +1866,40 @@
   document.getElementById('resume-work-add').addEventListener('click', () => addResumeWorkRow());
   document.getElementById('resume-education-add').addEventListener('click', () => addResumeEducationRow());
   document.getElementById('resume-skills-add').addEventListener('click', () => addResumeSkillRow());
+
+  // Quick add -- founder real-time, 2026-09-09: "we need a way to quick add skills via a comma
+  // separated list." Splits on commas, trims whitespace, drops empties, and skips anything that
+  // case-insensitively matches a skill row ALREADY on the page (typing/pasting a list that
+  // overlaps with existing skills shouldn't create duplicate rows).
+  document.getElementById('resume-skills-quickadd-btn').addEventListener('click', () => {
+    const input = document.getElementById('resume-skills-quickadd');
+    const names = input.value.split(',').map((s) => s.trim()).filter(Boolean);
+    if (names.length === 0) return;
+    const existing = new Set(
+      Array.from(document.querySelectorAll('#resume-skills-list [data-field="name"]'))
+        .map((el) => el.value.trim().toLowerCase())
+        .filter(Boolean)
+    );
+    let added = 0;
+    for (const name of names) {
+      if (existing.has(name.toLowerCase())) continue;
+      addResumeSkillRow({ name });
+      existing.add(name.toLowerCase());
+      added++;
+    }
+    input.value = '';
+    resumeMessage(true, added > 0
+      ? 'Added ' + added + ' skill' + (added === 1 ? '' : 's') + ' -- click "Save resume" to keep ' + (added === 1 ? 'it' : 'them') + '.'
+      : 'Nothing new to add -- every one of those is already on the list.');
+  });
+  // Enter-to-add in the quick-add field, matching the button's own behavior -- a real
+  // convenience for pasting a list and hitting Enter rather than reaching for the mouse.
+  document.getElementById('resume-skills-quickadd').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      document.getElementById('resume-skills-quickadd-btn').click();
+    }
+  });
   document.getElementById('resume-profiles-add').addEventListener('click', () => addResumeProfileRow());
 
   function collectResumeEntries(container, fields) {
