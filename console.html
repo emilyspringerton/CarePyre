@@ -1343,6 +1343,64 @@
     return d.innerHTML;
   }
 
+  // escAttr -- esc() is only safe for a text-content position (this file's own long-standing
+  // convention, see makeResumeEntryRow's own header comment on the real attribute-injection bug
+  // that already got found and fixed once). Real hyperlinks (2026-09-10 -- "add auto linking to
+  // the email and the links") are the first place this file actually needs to splice
+  // user-controlled text into an href="..." attribute value, so esc() alone isn't enough: a
+  // literal `"` in a URL would otherwise break out of the attribute. escAttr adds that one real,
+  // missing piece.
+  function escAttr(s) {
+    return esc(s).replace(/"/g, '&quot;');
+  }
+
+  // safeHref -- founder real-time, 2026-09-10: "can we add auto linking to the email and the
+  // links on the exports." Real, narrow safety measure against dangerous URL schemes
+  // (javascript:/data:/vbscript:/file:) a user-controlled profile-link or markdown-summary URL
+  // could otherwise smuggle into a real, clickable <a href>. A URL with no recognized scheme at
+  // all (the common real case for a bare "github.com/x/y" profile entry) gets a real https://
+  // prefix added so it's actually clickable rather than silently staying inert. Mirrors
+  // IDUNA_PRO's own resume.safeHref exactly -- same real rules, same real reasoning, kept in
+  // sync by hand since this is a different language/runtime, not a shared library.
+  function safeHref(raw) {
+    if (!raw) return '';
+    const trimmed = String(raw).trim();
+    const lower = trimmed.toLowerCase();
+    if (['javascript:', 'data:', 'vbscript:', 'file:'].some((s) => lower.startsWith(s))) return '';
+    if (['http://', 'https://', 'mailto:', 'tel:'].some((s) => lower.startsWith(s))) return trimmed;
+    return 'https://' + trimmed;
+  }
+
+  // renderMarkdownLink -- one real <a> tag for a safe url, or the escaped literal display text
+  // if the url couldn't pass safeHref's own scheme check -- never silently dropped.
+  function renderMarkdownLink(displayText, rawUrl) {
+    const href = safeHref(rawUrl);
+    if (!href) return esc(displayText);
+    return '<a href="' + escAttr(href) + '" target="_blank" rel="noopener noreferrer">' + esc(displayText) + '</a>';
+  }
+
+  // renderMarkdownSummary -- founder real-time, 2026-09-10: "can we allow for markdown in the
+  // summary so that we can have hyperlinks there too?" The identical real, narrow markdown
+  // subset IDUNA_PRO's own writeMarkdownParagraph supports: only [text](url) inline links, no
+  // bold/italic/headers -- a real, deliberate v0 boundary, not a full markdown renderer. Every
+  // NON-link segment of the text still goes through esc() before being placed in the output, the
+  // same real "text content only, never an attribute" discipline this file already established
+  // -- only the parsed url itself goes through escAttr(safeHref(...)) for the href attribute.
+  function renderMarkdownSummary(text) {
+    if (!text) return '';
+    const re = /\[([^\]]+)\]\(([^)]+)\)/g;
+    let out = '';
+    let lastIndex = 0;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      out += esc(text.slice(lastIndex, m.index));
+      out += renderMarkdownLink(m[1], m[2]);
+      lastIndex = re.lastIndex;
+    }
+    out += esc(text.slice(lastIndex));
+    return out;
+  }
+
   // ---- Change password ----
   const pwForm = document.getElementById('pw-form');
   const pwError = document.getElementById('pw-error');
@@ -2593,16 +2651,25 @@
     let html = '<div class="' + cls + '">';
     const nameHtml = '<div class="rt-name">' + esc(b.name || 'Your name') + '</div>';
     const labelHtml = b.label ? '<div class="rt-label">' + esc(b.label) + '</div>' : '';
-    const contact = [b.email, b.phone].filter(Boolean).map(esc).join(' &middot; ');
+    // Contact -- founder real-time, 2026-09-10: "can we add auto linking to the email." Email
+    // becomes a real mailto: link (via renderMarkdownLink -> escAttr(safeHref(...)) for the
+    // href, esc() for the display text); phone stays plain text (never asked to be linkified).
+    const contactParts = [];
+    if (b.email) contactParts.push(renderMarkdownLink(b.email, 'mailto:' + b.email));
+    if (b.phone) contactParts.push(esc(b.phone));
+    const contact = contactParts.join(' &middot; ');
     const contactHtml = contact ? '<div class="rt-contact">' + contact + '</div>' : '';
     // Links (basics.profiles) -- founder real-time, 2026-09-09: "we need to be able to add and
-    // configure the output of multiple github links." Rendered as plain escaped TEXT, same as
-    // the contact line above -- never spliced into an href="..." attribute, the same real
-    // attribute-injection risk this file's own header comment already warns about (esc() is
-    // only safe for a text-content position, not an attribute value).
+    // configure the output of multiple github links," extended 2026-09-10: "can we add auto
+    // linking to... the links." Only a profile with a real URL becomes a real, clickable link
+    // (safeHref also adds a missing https:// scheme to a bare "github.com/x/y" entry) -- a
+    // username-only entry has no real URL to link to, so it stays honest plain text.
     const links = (b.profiles || [])
       .filter((p) => p.url || p.username)
-      .map((p) => esc((p.network || 'Link') + ': ' + (p.url || p.username)))
+      .map((p) => {
+        const label = esc(p.network || 'Link') + ': ';
+        return label + (p.url ? renderMarkdownLink(p.url, p.url) : esc(p.username));
+      })
       .join(' &middot; ');
     const linksHtml = links ? '<div class="rt-contact">' + links + '</div>' : '';
 
@@ -2617,7 +2684,10 @@
     } else {
       html += nameHtml + labelHtml + contactHtml + linksHtml;
     }
-    if (b.summary) html += '<p class="rt-summary">' + esc(b.summary) + '</p>';
+    // Summary -- founder real-time, 2026-09-10: "can we allow for markdown in the summary so
+    // that we can have hyperlinks there too?" renderMarkdownSummary handles [text](url) links,
+    // escaping every other segment of the text exactly as esc() already did.
+    if (b.summary) html += '<p class="rt-summary">' + renderMarkdownSummary(b.summary) + '</p>';
 
     if (templateName === 'compact') {
       html += '<div class="rt-columns"><div>' + renderResumeTemplateWork(r.work) + '</div><div>' + renderResumeTemplateEducation(r.education) + '</div></div>';
