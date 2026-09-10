@@ -2138,6 +2138,17 @@
       (r.skills || []).forEach((s) => addResumeSkillRow(s));
       (basics.profiles || []).forEach((p) => addResumeProfileRow(p));
       await loadTargetsUI();
+      // Real, found-live bug fix (2026-09-10, founder: "the output doesn't show them in
+      // categories if i manually sort them into categories and save it"): the Preview panel
+      // (#resume-preview-wrap) only ever rendered from loadPreviewSource(), which was ONLY wired
+      // to the source dropdown's own change event and a bespoke Target's own Preview button --
+      // never called when the resume itself first loads. Since the dropdown's default value
+      // ("Master resume") never fires a change event just from being pre-selected, the Classic/
+      // Clean Tech/Compact buttons were a silent no-op the entire time (renderPreview's own
+      // `if (!currentPreviewResume) return;` guard, currentPreviewResume never having been set)
+      // -- unrelated to Skills specifically, this affected the WHOLE preview panel for the
+      // master resume. Loading the resume now also loads its own preview automatically.
+      loadPreviewSource(document.getElementById('preview-source-select').value);
     } catch (err) {
       resumeMessage(false, 'Could not load your resume: ' + err.message);
     }
@@ -2187,6 +2198,11 @@
       (body.skills || []).forEach((s) => addResumeSkillRow(s));
       ((body.basics || {}).profiles || []).forEach((p) => addResumeProfileRow(p));
       renderTargetsUI();
+      // Real, found-live bug fix (2026-09-10): re-render whatever the Preview panel is currently
+      // showing (master resume, or a bespoke Target) with the data that was JUST saved -- see
+      // loadResume's own matching fix above for the full root-cause writeup (the panel never
+      // auto-rendered at all before this).
+      loadPreviewSource(document.getElementById('preview-source-select').value);
       return body;
     } catch (err) {
       resumeMessage(false, 'Could not reach the console API: ' + err.message);

@@ -488,6 +488,38 @@ access-control gate, the "nothing uncategorized" no-op path, and per-user scopin
 self-serve registration issuing a real ES256 JWT) to confirm no regression to the server's own
 boot sequence.
 
+**Real, live-confirmed follow-up (2026-09-10, same day): the "not live-tested" gap above is a real,
+active break in production, not just an untested-but-presumed-fine path.** Founder real-time: "the
+categorization isnt working... the vertex auto categorize doesnt actually sort the skills into
+categories." Confirmed directly against the real, running production `idunapro` service: `POST
+/resume/skills/categorize` returns a real `503 {"error":"vertex auth: exit status 1"}` because
+`gcloud` has ZERO active credentials anywhere on this box (`gcloud auth list` → "No credentialed
+accounts"; `gcloud auth application-default print-access-token` → "Your default credentials were
+not found"; no service-account key file found anywhere in the repo either). This is a genuine,
+pre-existing infrastructure gap that would break ANY Vertex AI call made from this deployment —
+including IDUNA's own pre-existing GFD Item Builder, which this feature's own credential/call
+pattern was directly modeled on — not something this feature introduced or a bug in its own code.
+Fixing it needs a human to run `gcloud auth login` (interactive OAuth) or provision and securely
+store a real service-account key on this box; not something fixable from inside an agent session.
+Separately, and NOT a Vertex/credential issue at all: found and fixed a real, unrelated bug in the
+SAME complaint — "the output doesn't show them in categories if i manually sort them into
+categories and save it." Root cause: the screen Preview panel never actually rendered the master
+resume at all, ever, for anyone, regardless of Skills — `loadPreviewSource()` (the only function
+that populates `currentPreviewResume` and calls `renderPreview()`) was wired only to the source
+dropdown's own `change` event and a bespoke Target's own Preview button, never called when the
+resume first loads or right after a save. Since the dropdown's default "Master resume" option
+never fires `change` just from being pre-selected, clicking Classic/Clean Tech/Compact was a
+silent no-op the entire time this panel has existed. Fixed by having both `loadResume()` and
+`saveResumeFromForm()` call `loadPreviewSource()` with whatever source is currently selected, so
+the preview always reflects the latest saved data automatically. Verified end to end against the
+real, live production database (not a synthetic fixture): loaded a real account's own real,
+already-partially-categorized skills (2 of 64 skills manually set to "Security & Reliability")
+into a real JS engine running the exact deployed `groupSkillsByCategory`/`renderResumeTemplate`
+functions, and confirmed the rendered preview now correctly shows "Security & Reliability" and
+"Other" as two separate, labeled groups — matching a direct decompressed-PDF check of the same
+account's own real `export.pdf` output, which was already grouping correctly (the PDF side of
+this feature was never broken).
+
 ## 5. Real, honest, not done
 
 - No real DOCX export — PDF (Layer 3) is the only real exported file format; a separate,
