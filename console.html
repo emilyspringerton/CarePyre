@@ -258,9 +258,16 @@
      matched, matching this feature's own already-documented "no visual parity between the PDF
      and the web preview templates" precedent. */
   .resume-tpl-compact { font-family: 'Segoe UI', system-ui, sans-serif; color: #1c1c22; background: #fff; padding: 1.5rem; border-radius: 8px; max-width: 680px; margin: 0 auto; font-size: 0.88rem; }
-  .resume-tpl-compact .rt-name { font-size: 1.5rem; font-weight: 700; text-align: center; }
-  .resume-tpl-compact .rt-label { text-align: center; color: #5a5a5a; font-style: italic; margin-top: 0.1rem; }
-  .resume-tpl-compact .rt-contact { text-align: center; color: #5a5a5a; font-size: 0.78rem; margin-top: 0.3rem; }
+  .resume-tpl-compact .rt-name { font-size: 1.5rem; font-weight: 700; text-align: left; }
+  .resume-tpl-compact .rt-label { text-align: left; color: #5a5a5a; font-style: italic; margin-top: 0.1rem; }
+  .resume-tpl-compact .rt-contact { text-align: right; color: #5a5a5a; font-size: 0.78rem; margin-top: 0.3rem; }
+  /* rt-header-split -- founder real-time, 2026-09-10: "shift the contact info and links to the
+     right and the name and headline to the left so they can free up just a bit more vertical
+     space." Name/label share the top of the page with contact/links instead of four stacked,
+     separately-centered lines. */
+  .resume-tpl-compact .rt-header-split { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+  .resume-tpl-compact .rt-header-right { text-align: right; flex-shrink: 0; }
+  .resume-tpl-compact .rt-header-right .rt-contact { margin-top: 0; }
   .resume-tpl-compact .rt-summary { font-size: 0.85rem; margin: 0.6rem 0; }
   .resume-tpl-compact .rt-section-title { font-weight: 700; text-transform: uppercase; font-size: 0.76rem; letter-spacing: 0.06em; border-bottom: 1px solid #ccc; margin: 0 0 0.4rem; padding-bottom: 0.15rem; }
   .resume-tpl-compact .rt-entry { margin-bottom: 0.55rem; }
@@ -2584,10 +2591,10 @@
     const b = r.basics || {};
     const cls = templateName === 'tech' ? 'resume-tpl-tech' : templateName === 'compact' ? 'resume-tpl-compact' : 'resume-tpl-classic';
     let html = '<div class="' + cls + '">';
-    html += '<div class="rt-name">' + esc(b.name || 'Your name') + '</div>';
-    if (b.label) html += '<div class="rt-label">' + esc(b.label) + '</div>';
+    const nameHtml = '<div class="rt-name">' + esc(b.name || 'Your name') + '</div>';
+    const labelHtml = b.label ? '<div class="rt-label">' + esc(b.label) + '</div>' : '';
     const contact = [b.email, b.phone].filter(Boolean).map(esc).join(' &middot; ');
-    if (contact) html += '<div class="rt-contact">' + contact + '</div>';
+    const contactHtml = contact ? '<div class="rt-contact">' + contact + '</div>' : '';
     // Links (basics.profiles) -- founder real-time, 2026-09-09: "we need to be able to add and
     // configure the output of multiple github links." Rendered as plain escaped TEXT, same as
     // the contact line above -- never spliced into an href="..." attribute, the same real
@@ -2597,7 +2604,19 @@
       .filter((p) => p.url || p.username)
       .map((p) => esc((p.network || 'Link') + ': ' + (p.url || p.username)))
       .join(' &middot; ');
-    if (links) html += '<div class="rt-contact">' + links + '</div>';
+    const linksHtml = links ? '<div class="rt-contact">' + links + '</div>' : '';
+
+    if (templateName === 'compact') {
+      // founder real-time, 2026-09-10: "can we shift the contact info and links to the right
+      // (right align) and the name and headline to the left so they can free up just a bit more
+      // vertical space on the compact template?" -- a real, direct screen approximation of the
+      // paired PDF change: name/label LEFT, contact/links RIGHT, sharing one flex row instead of
+      // four separate centered lines.
+      html += '<div class="rt-header-split"><div class="rt-header-left">' + nameHtml + labelHtml +
+        '</div><div class="rt-header-right">' + contactHtml + linksHtml + '</div></div>';
+    } else {
+      html += nameHtml + labelHtml + contactHtml + linksHtml;
+    }
     if (b.summary) html += '<p class="rt-summary">' + esc(b.summary) + '</p>';
 
     if (templateName === 'compact') {
