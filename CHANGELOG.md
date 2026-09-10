@@ -1,4 +1,5 @@
 ## 2026-09-10
+- Community Tools: real auto-linking for email/profile links in the screen preview + markdown links in the summary, matching the paired PDF behavior. Deployed live. Apple #18777. (sess-20260905-0720-ec33e7c5)
 
 - Community Tools: Compact preview template header restyled to match (name/label left, contact/links right). Deployed live. Apple #18773. (sess-20260905-0720-ec33e7c5)
 
