@@ -381,6 +381,15 @@ approximation of the PDF's own two-column layout, not pixel-matched — see §5'
 below). Both PDF download paths (the Preview card's button and each Target's own inline "Export
 PDF" button) now pass the currently-selected preview template through as a real query param.
 
+**Header layout refined, 2026-09-10**: founder real-time, "can we shift the contact info and
+links to the right (right align) and the name and headline to the left so they can free up just
+a bit more vertical space on the compact template?" The Compact PDF header now puts name+label
+left-aligned and contact+links right-aligned on two shared rows, instead of four separate
+centered lines — a real, direct vertical-space saving, applied only to Compact (Classic's own
+header is completely unchanged). The Compact screen preview gets the matching real flex-row
+treatment. Verified directly: a new test parses the actual PDF text-position operators to
+confirm the real left/right placement, not just that the strings appear somewhere on the page.
+
 ## 4i. Real auto-sort for Work/Education/Awards, fixed 2026-09-09
 
 Kanban card CVB-12434 (the real IDUNA priority queue, position 0), founder real-time: "the work
