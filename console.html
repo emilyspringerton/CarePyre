@@ -84,6 +84,18 @@
   .brand { display: flex; align-items: center; gap: 0.6rem; font-weight: 700; color: var(--blue-dark); font-size: 1.1rem; }
   .brand .dot { width: 10px; height: 10px; border-radius: 999px; background: var(--orange); }
 
+  /* flash-banner -- a slim, non-blocking notice strip under the header (2026-09-10: "make the
+     encryption warning less scary... more like a flash message at the top"). Deliberately a
+     light amber "heads up" tone rather than the boxed dark-red "danger" card this replaced --
+     still clearly visible, no longer alarming, and no longer competing with page content for
+     space. Reused for any future account-wide flash notice, not just this one. */
+  .flash-banner {
+    background: #FFF6E6; border-bottom: 1px solid #F0C987; color: #8A5A00;
+    padding: 0.55rem 2rem; font-size: 0.85rem; text-align: center;
+    display: flex; align-items: center; justify-content: center; gap: 1rem; flex-wrap: wrap;
+  }
+  .flash-banner button { width: auto; margin-top: 0; }
+
   .auth-main { max-width: 480px; margin: 0 auto; padding: 3rem 1.5rem 4rem; display: flex; flex-direction: column; gap: 1.5rem; }
   .card {
     background: var(--bg); border: 1px solid var(--border); border-radius: 14px;
@@ -205,6 +217,7 @@
   }
 
   @media (max-width: 760px) {
+    .flash-banner { padding: 0.55rem 1rem; text-align: left; justify-content: flex-start; }
     .app-shell { flex-direction: column; min-height: 0; }
     .sidebar {
       width: 100%; flex-direction: row; align-items: center; overflow-x: auto;
@@ -296,6 +309,23 @@
   <a href="/index.html">carepyre.org</a>
 </header>
 
+<!-- CP-HIPAA-1 (founder real-time, 2026-09-07): "we forcefully encourage the pgp integration" --
+     forceful encouragement, not a hard block: nothing here stops anyone from sending or reading
+     mail unencrypted, it just refuses to let the risk stay invisible. Shown/hidden by
+     loadEncryptionStatus based on the real, current /api/v1/mail/encryption state -- not a
+     one-time dismissible tip (still no "don't show this again"), just genuinely lighter-weight:
+     founder real-time, 2026-09-10: "can we make the carepyre encryption warning a little less
+     scary? it takes over the full screen can you make it more like a flash message at the top?"
+     Moved out of the mail page's own inline flow (where it competed with the reading pane, wrapped
+     tall on narrow viewports, and used hard-coded dark-red/pink colors that clashed with this
+     app's actual light theme) to a slim, single strip directly under the header, visible
+     regardless of which page is active -- loadEncryptionStatus() already runs once at app-shell
+     init, not per-page, so this needed no JS change, only a new home and a calmer look. -->
+<div id="unencrypted-banner" class="hidden flash-banner">
+  <span>Heads up — this mailbox isn't encrypted at rest yet. CarePyre staff never read your mail; adding a PGP key or S/MIME cert means no one else could either.</span>
+  <button type="button" id="unencrypted-banner-btn" class="small secondary">Secure my mailbox</button>
+</div>
+
 <main class="auth-main" id="auth-main">
   <!-- Auth card: login/register toggle -->
   <div class="card" id="auth-card">
@@ -385,19 +415,6 @@
         </div>
 
         <div id="mail-app-wrap" class="hidden mail-layout" data-view="list">
-          <!-- CP-HIPAA-1 (founder real-time, 2026-09-07): "we forcefully encourage the pgp
-               integration" -- forceful encouragement, not a hard block: nothing here stops
-               anyone from sending or reading mail unencrypted, it just refuses to let the risk
-               stay invisible. Shown/hidden by loadEncryptionStatus based on the real, current
-               /api/v1/mail/encryption state -- not a one-time dismissible tip. -->
-          <div id="unencrypted-banner" class="hidden" style="background:#3a1f1f;border:1px solid var(--error);border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;display:flex;gap:0.75rem;align-items:center;justify-content:space-between;flex-wrap:wrap;">
-            <p class="sub" style="margin:0;color:#f5b8b8;">
-              <strong>This mailbox is not encrypted at rest.</strong> CarePyre staff never read your
-              mail -- but if this account is ever subpoenaed, unencrypted mail is readable and must
-              be handed over as-is. Add a PGP key and CarePyre can no longer read it either way.
-            </p>
-            <button type="button" id="unencrypted-banner-btn" class="small">Secure my mailbox</button>
-          </div>
           <div class="mail-list-pane">
             <div class="mail-list-pane-header">
               <h2 style="margin:0;">Inbox</h2>
