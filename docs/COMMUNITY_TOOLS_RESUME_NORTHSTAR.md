@@ -430,6 +430,64 @@ scheme) — confirmed no attribute breakout and no dangerous scheme ever becomes
 Live-verified against real production data: the real, existing account's own real email and
 GitHub profile URL both correctly became real, clickable links in the actual generated PDF.
 
+## 4k. Real Skills categorization + Vertex AI auto-organize, shipped 2026-09-10
+
+Founder real-time, direct employer-scan feedback on the rendered resume: "Skills section is a
+dump — it's alphabetical chaos. Employers scan, they don't read linearly." Reorganize by
+category: Backend & APIs / Frontend / Cloud & Infrastructure / Security & Reliability /
+Databases / Leadership & Process. "I think we need to build google vertex AI into it like we
+have for the DragonsNShit item builder so that vertex can auto organize the skills for us
+perhaps even into categories."
+
+New `Skill.Category` field (`internal/resume/model.go`) — a deliberate CarePyre extension beyond
+strict JSON Resume, same real precedent `Skill.ID`/`Work.ID` already set (jsonresume.org's own
+schema has neither). `resume.SkillCategories`/`SkillCategoryOther`/`GroupSkillsByCategory`
+(`internal/resume/skill_categories.go`) is the one real, shared bucketing choke point both the
+PDF export and the screen preview use, so the two never drift into two different groupings of the
+same data — canonical order first (only buckets actually present), Other next, then any
+unrecognized category value (a stale AI run, a manual edit) in first-seen order, never silently
+dropped.
+
+`internal/resume/pdf.go`'s Skills section now renders one bold category sub-heading per real
+bucket instead of one flat comma-joined list. `console.html`'s screen preview mirrors the exact
+same grouping logic (`groupSkillsByCategory`, a direct JS port of the Go function, kept in
+lockstep deliberately) across all three templates, each with its own `.rt-skill-category` style.
+The skill-editing row gained a real `<select>` Category field (constrained to the six known
+values + Other, not free text — a free-text field would let typos/synonyms fragment the same real
+category into near-duplicate buckets).
+
+**Real Vertex AI auto-categorize**: `POST /resume/skills/categorize`
+(`internal/http/handlers/community_tools_skills_categorize.go`) reuses the exact real Vertex
+credential/call pattern IDUNA's own GFD Item Builder already established
+(`IDUNA/internal/http/handlers/gfd_item_proposals.go`) — real ADC via `gcloud auth
+print-access-token`, no static API key, same `project-d24a71e9-2daf-4b2d-917`/`us-central1`
+project, `gemini-2.5-flash`, `generationConfig.responseMimeType: application/json` for direct,
+markdown-fence-free JSON back. Duplicated rather than imported (IDUNA and IDUNA_PRO are separate
+Go modules with no shared internal package for this today), matching that file's own real,
+documented precedent for the same reason. One real, deliberate difference: the caller's WHOLE
+uncategorized skill list goes in a SINGLE Vertex call (cheaper, faster, more internally-consistent
+bucketing) rather than one call per skill, since — unlike the item builder's necessarily-per-item
+hallucinated stats — categorization genuinely benefits from the model seeing the full list at
+once.
+
+**Real, deliberate idempotence**: only skills with an empty `Category` are ever sent — a skill a
+user (or a prior run of this same endpoint) already categorized keeps that value untouched, so
+`console.html`'s new "Auto-organize with AI" button is always safe to click again, never silently
+overwriting a manual correction. A model-returned category that isn't one of the six real, known
+values (or "Other") is normalized to `Other` rather than trusted verbatim — every stored `Category`
+value is guaranteed to be one `GroupSkillsByCategory` actually recognizes.
+
+**Real, honest, not live-tested end to end in this session**: this sandbox has no active `gcloud`
+account, so the actual Vertex network call itself was never exercised live here — closed instead
+with real, network-free unit coverage of the response-parsing/normalization logic against a canned
+Vertex response body matching the real, documented shape (same real shape
+`gfd_item_proposals.go`'s own `generateItemProposal` already parses, itself live-verified against
+the real endpoint before that file was written), plus full handler-level tests for the real
+access-control gate, the "nothing uncategorized" no-op path, and per-user scoping. `go build`/
+`go vet`/`go test ./...` all clean; a fresh-SQLite live boot re-verified (`/health` OK, a real
+self-serve registration issuing a real ES256 JWT) to confirm no regression to the server's own
+boot sequence.
+
 ## 5. Real, honest, not done
 
 - No real DOCX export — PDF (Layer 3) is the only real exported file format; a separate,

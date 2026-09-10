@@ -1,3 +1,6 @@
+## 2026-09-10 (continued)
+- Community Tools: Skills section groups by real category (Backend & APIs, Frontend, Cloud & Infrastructure, Security & Reliability, Databases, Leadership & Process, Other) in the screen preview, matching the paired PDF change (IDUNA_PRO). New Category dropdown on each skill row (constrained to the six known values, not free text) + a real "Auto-organize with AI" button (Google Vertex AI, auto-buckets any skill with no category set -- idempotent, never overwrites a manual choice). `node --check` clean on the inline script. See docs/COMMUNITY_TOOLS_RESUME_NORTHSTAR.md §4k. (sess-20260905-0720-ec33e7c5)
+
 ## 2026-09-10
 - Community Tools: real auto-linking for email/profile links in the screen preview + markdown links in the summary, matching the paired PDF behavior. Deployed live. Apple #18777. (sess-20260905-0720-ec33e7c5)
 

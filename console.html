@@ -240,6 +240,7 @@
   .resume-tpl-classic .rt-entry-sub { font-style: italic; color: #444; }
   .resume-tpl-classic .rt-entry-dates { float: right; color: #666; font-size: 0.85rem; }
   .resume-tpl-classic .rt-skill-pill { display: inline-block; border: 1px solid #ccc; border-radius: 3px; padding: 0.1rem 0.5rem; margin: 0.15rem 0.25rem 0.15rem 0; font-size: 0.85rem; }
+  .resume-tpl-classic .rt-skill-category { font-weight: 700; font-size: 0.85rem; margin: 0.5rem 0 0.15rem; }
 
   .resume-tpl-tech { font-family: 'Segoe UI', system-ui, sans-serif; color: #1c1c22; background: #fff; padding: 2rem; border-radius: 8px; max-width: 680px; margin: 0 auto; border-left: 5px solid var(--blue, #3fa9dc); }
   .resume-tpl-tech .rt-name { font-size: 1.7rem; font-weight: 800; color: var(--blue-dark, #1c6f96); }
@@ -250,6 +251,7 @@
   .resume-tpl-tech .rt-entry-sub { color: var(--blue, #3fa9dc); font-weight: 600; }
   .resume-tpl-tech .rt-entry-dates { float: right; color: #888; font-size: 0.8rem; font-family: 'Courier New', monospace; }
   .resume-tpl-tech .rt-skill-pill { display: inline-block; background: #eaf6fc; color: var(--blue-dark, #1c6f96); border-radius: 999px; padding: 0.15rem 0.65rem; margin: 0.15rem 0.25rem 0.15rem 0; font-size: 0.82rem; font-weight: 600; }
+  .resume-tpl-tech .rt-skill-category { font-weight: 700; font-size: 0.78rem; color: var(--blue, #3fa9dc); text-transform: uppercase; letter-spacing: 0.05em; margin: 0.5rem 0 0.15rem; }
 
   /* Compact -- founder real-time, 2026-09-09: "add a new output template compact that manages
      to get the experience and education like into 2 columns or something so we can get more
@@ -275,6 +277,7 @@
   .resume-tpl-compact .rt-entry-sub { font-style: italic; color: #444; font-size: 0.78rem; }
   .resume-tpl-compact .rt-entry-dates { display: block; color: #666; font-size: 0.75rem; float: none; }
   .resume-tpl-compact .rt-skill-pill { display: inline-block; border: 1px solid #ccc; border-radius: 3px; padding: 0.08rem 0.4rem; margin: 0.1rem 0.2rem 0.1rem 0; font-size: 0.78rem; }
+  .resume-tpl-compact .rt-skill-category { font-weight: 700; font-size: 0.74rem; margin: 0.4rem 0 0.1rem; }
   .resume-tpl-compact .rt-columns { display: grid; grid-template-columns: 1.6fr 1fr; gap: 0 1.2rem; margin-top: 0.6rem; }
   .resume-tpl-compact .rt-columns .rt-section-title { margin-top: 0; }
   @media (max-width: 480px) {
@@ -591,7 +594,16 @@
                   <button type="button" class="small secondary" id="resume-skills-quickadd-btn" style="margin-top:0;width:auto;">Add</button>
                 </div>
                 <div id="resume-skills-list" style="margin-top:0.8rem;"></div>
-                <button type="button" class="small secondary" id="resume-skills-add" style="margin-top:0.6rem;">+ Add skill</button>
+                <div style="display:flex; gap:0.5rem; margin-top:0.6rem; flex-wrap:wrap;">
+                  <button type="button" class="small secondary" id="resume-skills-add">+ Add skill</button>
+                  <!-- Founder real-time, 2026-09-10, direct employer-scan feedback: "Skills
+                       section is a dump -- it's alphabetical chaos... I think we need to build
+                       google vertex AI into it... so that vertex can auto organize the skills for
+                       us." Categorizes only skills with no Category set yet -- never overwrites a
+                       manual choice, so this is always safe to click again. -->
+                  <button type="button" class="small secondary" id="resume-skills-autocategorize">Auto-organize with AI</button>
+                </div>
+                <p class="muted" style="font-size:0.8rem; margin-top:0.3rem;">Auto-organize uses Google Vertex AI to bucket any skill with no Category set into Backend &amp; APIs / Frontend / Cloud &amp; Infrastructure / Security &amp; Reliability / Databases / Leadership &amp; Process / Other. Saves your resume first, then re-loads the categorized list -- review and adjust any category afterward.</p>
               </div>
             </details>
 
@@ -1891,11 +1903,53 @@
   // comma-separated text field (skillsKeywordsToArray/skillsKeywordsFromArray below convert),
   // matching this whole file's own "keep the form simple" discipline rather than a second
   // nested repeatable-list-within-a-list control.
+  // RESUME_SKILL_CATEGORIES -- real, founder-specified Skills grouping (founder real-time,
+  // 2026-09-10, direct employer-scan feedback on the rendered resume: "Skills section is a dump
+  // -- it's alphabetical chaos. Employers scan, they don't read linearly... Reorganize by
+  // category"). Must match IDUNA_PRO's own resume.SkillCategories exactly
+  // (internal/resume/skill_categories.go) -- the server is the real source of truth (rejects
+  // nothing client-side, so a stale client list is never a hard failure), but keeping these two
+  // lists in sync is what makes the dropdown actually show the six real buckets the server groups
+  // by.
+  const RESUME_SKILL_CATEGORIES = [
+    'Backend & APIs',
+    'Frontend',
+    'Cloud & Infrastructure',
+    'Security & Reliability',
+    'Databases',
+    'Leadership & Process',
+    'Other',
+  ];
   const RESUME_SKILL_FIELDS = [
     { key: 'name', label: 'Skill', type: 'text' },
+    { key: 'category', label: 'Category', type: 'select', options: RESUME_SKILL_CATEGORIES, placeholder: '(uncategorized)' },
     { key: 'level', label: 'Level (e.g. Beginner, Intermediate, Expert)', type: 'text' },
     { key: 'keywords', label: 'Related keywords (comma-separated)', type: 'text' },
   ];
+
+  // groupSkillsByCategory -- real, direct JS mirror of IDUNA_PRO's own Go
+  // resume.GroupSkillsByCategory (internal/resume/skill_categories.go), kept in lockstep
+  // deliberately so the screen preview groups skills into EXACTLY the same buckets, in the same
+  // order, as the downloaded PDF -- an empty category is bucketed with "Other", the six canonical
+  // categories sort first (only ones actually present), "Other" next, then any unrecognized
+  // category value in first-seen order (never silently dropped).
+  function groupSkillsByCategory(skills) {
+    const buckets = {};
+    const firstSeenOrder = [];
+    (skills || []).forEach((s) => {
+      const cat = s.category || 'Other';
+      if (!buckets[cat]) { buckets[cat] = []; firstSeenOrder.push(cat); }
+      buckets[cat].push(s);
+    });
+    const order = [];
+    const seen = new Set();
+    RESUME_SKILL_CATEGORIES.filter((c) => c !== 'Other').forEach((cat) => {
+      if ((buckets[cat] || []).length) { order.push(cat); seen.add(cat); }
+    });
+    if ((buckets['Other'] || []).length) { order.push('Other'); seen.add('Other'); }
+    firstSeenOrder.forEach((cat) => { if (!seen.has(cat)) { order.push(cat); seen.add(cat); } });
+    return order.map((cat) => ({ category: cat, skills: buckets[cat] }));
+  }
   // Links (JSON Resume's own "profiles" field) -- founder real-time, 2026-09-09: "we need to be
   // able to add and configure the output of multiple github links." `network` is a free-text
   // label ("GitHub", "LinkedIn", "Portfolio") -- multiple entries with the SAME network value
@@ -1920,10 +1974,25 @@
       const label = document.createElement('label');
       label.textContent = f.label;
       row.appendChild(label);
-      const el = document.createElement(f.type === 'textarea' ? 'textarea' : 'input');
+      // 'select' -- real addition (2026-09-10) for Skill.category: a plain text field would let
+      // typos/synonyms fragment the same real category into several near-duplicate buckets on
+      // the rendered resume, defeating the whole point of grouping. Options list is a fixed,
+      // known set (RESUME_SKILL_CATEGORIES below), not free text.
+      const el = document.createElement(f.type === 'textarea' ? 'textarea' : f.type === 'select' ? 'select' : 'input');
       el.dataset.field = f.key;
       if (f.type === 'textarea') {
         el.rows = 2;
+      } else if (f.type === 'select') {
+        const blank = document.createElement('option');
+        blank.value = '';
+        blank.textContent = f.placeholder || '(uncategorized)';
+        el.appendChild(blank);
+        (f.options || []).forEach((opt) => {
+          const o = document.createElement('option');
+          o.value = opt;
+          o.textContent = opt;
+          el.appendChild(o);
+        });
       } else {
         el.type = f.type;
         if (f.placeholder) el.placeholder = f.placeholder;
@@ -2015,6 +2084,7 @@
     return collectResumeEntries(document.getElementById('resume-skills-list'), RESUME_SKILL_FIELDS).map((s) => {
       const keywords = (s.keywords || '').split(',').map((k) => k.trim()).filter(Boolean);
       const out = { id: s.id, name: s.name, level: s.level };
+      if (s.category) out.category = s.category;
       if (keywords.length) out.keywords = keywords;
       return out;
     });
@@ -2056,8 +2126,11 @@
     }
   }
 
-  document.getElementById('resume-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
+  // saveResumeFromForm -- the real, shared save logic (2026-09-10, extracted from the form's own
+  // submit handler below so the new "Auto-organize with AI" button can save first without
+  // duplicating this whole payload-build + reload-rows sequence). Returns the saved resume on
+  // success, null on failure (a real, honest error message is already shown either way).
+  async function saveResumeFromForm() {
     const payload = {
       basics: {
         name: document.getElementById('resume-name').value.trim(),
@@ -2080,7 +2153,7 @@
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
         resumeMessage(false, body.error || ('Could not save resume (HTTP ' + res.status + ').'));
-        return;
+        return null;
       }
       currentMasterResume = body;
       resumeMessage(true, 'Resume saved.');
@@ -2097,8 +2170,53 @@
       (body.skills || []).forEach((s) => addResumeSkillRow(s));
       ((body.basics || {}).profiles || []).forEach((p) => addResumeProfileRow(p));
       renderTargetsUI();
+      return body;
     } catch (err) {
       resumeMessage(false, 'Could not reach the console API: ' + err.message);
+      return null;
+    }
+  }
+
+  document.getElementById('resume-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await saveResumeFromForm();
+  });
+
+  // Auto-organize with AI -- founder real-time, 2026-09-10, direct employer-scan feedback:
+  // "Skills section is a dump -- it's alphabetical chaos... I think we need to build google
+  // vertex AI into it like we have for the DragonsNShit item builder so that vertex can auto
+  // organize the skills for us." Saves first (so any unsaved edits/new rows are the real,
+  // current data the server categorizes), then calls the real Vertex-backed endpoint, then
+  // reloads the skill rows with their newly-assigned categories -- server-side, the endpoint
+  // itself only ever touches skills with an empty Category, so this is always safe to click
+  // again without clobbering a manual choice.
+  document.getElementById('resume-skills-autocategorize').addEventListener('click', async () => {
+    const btn = document.getElementById('resume-skills-autocategorize');
+    const saved = await saveResumeFromForm();
+    if (!saved) return;
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Organizing...';
+    try {
+      const res = await fetch(API_BASE + '/community-tools/resume/skills/categorize', {
+        method: 'POST',
+        headers: authHeaders(),
+      });
+      const skills = await res.json().catch(() => null);
+      if (!res.ok) {
+        const msg = (skills && skills.error) || ('HTTP ' + res.status);
+        resumeMessage(false, 'Could not auto-organize skills: ' + msg);
+        return;
+      }
+      document.getElementById('resume-skills-list').innerHTML = '';
+      (skills || []).forEach((s) => addResumeSkillRow(s));
+      if (currentMasterResume) currentMasterResume.skills = skills;
+      resumeMessage(true, 'Skills organized by category -- review below, then Save resume again if you adjust anything.');
+    } catch (err) {
+      resumeMessage(false, 'Could not reach the console API: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
     }
   });
 
@@ -2696,9 +2814,12 @@
     }
 
     if ((r.skills || []).length) {
-      html += '<div class="rt-section-title">Skills</div><div>';
-      r.skills.forEach((s) => { html += '<span class="rt-skill-pill">' + esc(s.name || '') + '</span>'; });
-      html += '</div>';
+      html += '<div class="rt-section-title">Skills</div>';
+      groupSkillsByCategory(r.skills).forEach((g) => {
+        html += '<div class="rt-skill-category">' + esc(g.category) + '</div><div>';
+        g.skills.forEach((s) => { html += '<span class="rt-skill-pill">' + esc(s.name || '') + '</span>'; });
+        html += '</div>';
+      });
     }
     if ((r.awards || []).length) {
       html += '<div class="rt-section-title">Awards</div>';
