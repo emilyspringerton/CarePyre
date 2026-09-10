@@ -403,6 +403,33 @@ the edit. Live-verified: the real, existing production data for a real account c
 entry closely matching the exact reported scenario, previously buried near the bottom — re-sorted
 using the same shipped function, confirmed it now ranks near the top.
 
+## 4j. Real auto-linking + markdown links in the summary, shipped 2026-09-10
+
+Founder real-time: "can we add auto linking to the email and the links on the exports also can
+we allow for markdown in the summary so that we can have hyperlinks there too?"
+
+**Auto-linking**: the email address becomes a real `mailto:` link; each profile entry with a
+real URL becomes a real, clickable link — a bare `github.com/x/y`-style entry (no scheme typed)
+gets a real `https://` prefix added so it's actually clickable. A username-only profile entry
+has no real URL to link to, so it stays honest plain text rather than a guessed-at link. Applied
+consistently in both the PDF (classic and compact headers) and the screen preview (all three
+templates).
+
+**Markdown links in the summary**: a real, narrow `[text](url)` subset — no bold/italic/headers,
+a deliberate v0 boundary. In the PDF this uses fpdf's own `Write`/`WriteLinkString` (the real
+primitives for mixing plain and linked text within one flowing paragraph); deliberately scoped
+to `basics.summary` only, not Work-entry summaries, since those primitives aren't column-width-
+aware and would overflow the compact template's own two-column layout.
+
+**Real, named security measure**: a shared `safeHref` (mirrored by hand between the Go and JS
+implementations) rejects `javascript:`/`data:`/`vbscript:`/`file:` schemes outright — neither a
+profile link nor a markdown-summary link can ever become a real, clickable dangerous-scheme
+link; it renders as its own literal, un-linked text instead. Verified with real XSS-shaped test
+payloads on both sides (a literal quote in a URL, HTML in a link's display text, a `javascript:`
+scheme) — confirmed no attribute breakout and no dangerous scheme ever becomes a real link.
+Live-verified against real production data: the real, existing account's own real email and
+GitHub profile URL both correctly became real, clickable links in the actual generated PDF.
+
 ## 5. Real, honest, not done
 
 - No real DOCX export — PDF (Layer 3) is the only real exported file format; a separate,
@@ -415,6 +442,10 @@ using the same shipped function, confirmed it now ranks near the top.
 - Per-entry (not just per-target) text overrides — "even different little summary texts" is
   satisfied at the Basics (summary/headline) level only, not per-work-entry, named honestly as
   a real, separate, smaller possible extension if ever needed.
+- Markdown links are supported in `basics.summary` only, not Work-entry summaries (a real,
+  deliberate scope boundary — see §4j) — a real, separate follow-up if ever needed, blocked on
+  a column-width-aware version of fpdf's own `Write`/`WriteLinkString` primitives for the
+  compact template specifically.
 - Section-label vocabulary advisory checks (real ATS advice about non-standard headers) named in
   the original scoping pass but not implemented — a real, separate, smaller follow-up to Layer 2.
 - No live browser verification of the new console.html UI (see §4a) — syntax/structure checked

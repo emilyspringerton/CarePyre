@@ -57,7 +57,10 @@ not working infrastructure" — no longer true. Real, shipped, live infrastructu
   screen preview (previously in the data model but invisible everywhere) (§4f). Real quick-add
   for skills via a comma-separated list (§4g). Real "Compact" template (a real two-column
   Experience/Education layout, both in the PDF and as a screen preview option) plus a real
-  candidate name + export timestamp in every downloaded PDF's footer and filename (§4h).
+  candidate name + export timestamp in every downloaded PDF's footer and filename (§4h). Real
+  auto-linking (email -> mailto:, profile URLs -> real clickable links, dangerous schemes
+  rejected) and real markdown `[text](url)` links in the summary, in both the PDF and screen
+  preview (§4j).
 
 `source/gemini-transcript-2026-08-09.md` is still the repo's real "skunkworks origin" artifact —
 an ingested Gemini conversation about ReLU activation function variants, unrelated to the
