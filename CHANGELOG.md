@@ -1,3 +1,7 @@
+## 2026-09-10
+
+- Community Tools: Compact preview template header restyled to match (name/label left, contact/links right). Deployed live. Apple #18773. (sess-20260905-0720-ec33e7c5)
+
 ## 2026-09-09
 - Community Tools: new 'Compact' preview template + template-aware PDF downloads (Download PDF/Export PDF now honor the selected style). Deployed live. Apple #18765. (sess-20260905-0720-ec33e7c5)
 - Community Tools: '+ New bespoke resume' now defaults to every master entry selected (subtractive tailoring), not an empty selection. Deployed live. Apple #18760. (sess-20260905-0720-ec33e7c5)
